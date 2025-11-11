@@ -40,7 +40,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("POST", "/users") => create_user(req),
         ("POST", "/posts") => create_post(req),
         ("GET", "/posts") => list_posts(),
-        _ => Ok(Response::builder().status(404).header("Content-Type", "application/json").body("Not found").build()),
+        _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
 }
 
