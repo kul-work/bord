@@ -230,9 +230,10 @@ fn create_post(req: Request) -> anyhow::Result<Response> {
 }
 
 fn list_posts(req: Request) -> anyhow::Result<Response> {
-    if validate_token(&req).is_none() {
-        return Ok(unauthorized());
-    }
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
 
     let store = store();
     let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
@@ -240,7 +241,9 @@ fn list_posts(req: Request) -> anyhow::Result<Response> {
     let mut posts = Vec::new();
     for id in feed.iter().take(20) {
         if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
-            posts.push(p);
+            if p.user_id == user_id {
+                posts.push(p);
+            }
         }
     }
 
