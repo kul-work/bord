@@ -95,6 +95,24 @@
         .post-meta {
             font-size: 12px;
             color: #999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-block;
+            width: auto;
+            margin: 0;
+        }
+        .delete-btn:hover {
+            background: #c82333;
         }
         .error {
             background: #f8d7da;
@@ -160,7 +178,7 @@
             const err = document.getElementById('error');
             err.textContent = msg;
             err.classList.add('show');
-            setTimeout(() => err.classList.remove('show'), 2000);
+            setTimeout(() => err.classList.remove('show'), 3000);
         }
 
         function showSuccess(msg) {
@@ -262,6 +280,30 @@
             }
         }
 
+        async function deletePost(postId) {
+            if (!confirm('Delete this post?')) return;
+
+            try {
+                const res = await fetch(API_URL + '/posts/' + postId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (res.status === 204) {
+                    showSuccess('Post deleted!');
+                    loadPosts();
+                } else if (res.status === 403) {
+                    showError('Cannot delete post');
+                } else {
+                    showError('Error deleting post');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
         async function loadPosts() {
             try {
                 const res = await fetch(API_URL + '/posts', {
@@ -274,7 +316,10 @@
                     feed.innerHTML = posts.map(p => `
                         <div class="post">
                             <div class="post-content">${escapeHtml(p.content)}</div>
-                            <div class="post-meta">${new Date(p.created_at).toLocaleString()}</div>
+                            <div class="post-meta">
+                                <span>${new Date(p.created_at).toLocaleString()}</span>
+                                <button class="delete-btn" onclick="deletePost('${p.id}')">X</button>
+                            </div>
                         </div>
                     `).join('');
                 } else {
