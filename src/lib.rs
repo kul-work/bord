@@ -56,6 +56,16 @@ fn hash_password(password: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
+// === Static file serving ===
+fn serve_static(_path: &str) -> anyhow::Result<Response> {
+    let html = include_bytes!("../static/index.html");
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "text/html; charset=utf-8")
+        .body(html.to_vec())
+        .build())
+}
+
 // === Component entrypoint ===
 #[http_component]
 fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
@@ -67,6 +77,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("POST", "/login") => login_user(req),
         ("POST", "/posts") => create_post(req),
         ("GET", "/posts") => list_posts(req),
+        ("GET", "/") | ("GET", "/index.html") => serve_static(path),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
 }

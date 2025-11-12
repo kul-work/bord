@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .hidden { display: none; }
+        h1 {
+            margin-bottom: 30px;
+            text-align: center;
+            color: #222;
+        }
+        .auth-form, .post-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        input, textarea, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.logout {
+            background: #dc3545;
+            margin-top: 20px;
+        }
+        button.logout:hover {
+            background: #c82333;
+        }
+        .posts {
+            margin-top: 30px;
+        }
+        .post {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .post-content {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .post-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .error.show { display: block; }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bord</h1>
+        
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+
+        <!-- Login/Register Form -->
+        <div id="authSection" class="auth-form">
+            <h2 style="margin-bottom: 20px; font-size: 20px;">Sign Up or Log In</h2>
+            <input type="text" id="username" placeholder="Username" autocomplete="username">
+            <input type="password" id="password" placeholder="Password" autocomplete="password">
+            <button onclick="register()">Sign Up</button>
+            <button onclick="login()" style="background: #6c757d; margin-top: 10px;">Log In</button>
+        </div>
+
+        <!-- Post Form -->
+        <div id="postSection" class="post-form hidden">
+            <button class="logout" onclick="logout()">Log Out</button>
+            <h2 style="margin-bottom: 20px; font-size: 20px;">New Post</h2>
+            <textarea id="postContent" placeholder="What's on your mind?"></textarea>
+            <button onclick="createPost()">Post</button>
+        </div>
+
+        <!-- Posts Feed -->
+        <div id="feedSection" class="posts hidden">
+            <h2 style="margin-bottom: 20px; font-size: 20px;">Feed</h2>
+            <div id="feed"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let token = localStorage.getItem('token');
+
+        function showError(msg) {
+            const err = document.getElementById('error');
+            err.textContent = msg;
+            err.classList.add('show');
+            setTimeout(() => err.classList.remove('show'), 5000);
+        }
+
+        function showSuccess(msg) {
+            const suc = document.getElementById('success');
+            suc.textContent = msg;
+            suc.classList.add('show');
+            setTimeout(() => suc.classList.remove('show'), 3000);
+        }
+
+        async function register() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                showError('Username and password required');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + '/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (res.status === 201) {
+                    showSuccess('Account created! Now log in.');
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                } else if (res.status === 409) {
+                    showError('Username already exists');
+                } else {
+                    showError('Error creating account');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                showError('Username and password required');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + '/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (res.status === 200) {
+                    const data = await res.json();
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    showUIForLoggedIn();
+                    loadPosts();
+                } else {
+                    showError('Invalid credentials');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        async function createPost() {
+            const content = document.getElementById('postContent').value.trim();
+            
+            if (!content) {
+                showError('Post cannot be empty');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + '/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ content })
+                });
+                
+                if (res.status === 201) {
+                    document.getElementById('postContent').value = '';
+                    showSuccess('Post created!');
+                    loadPosts();
+                } else {
+                    showError('Error creating post');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        async function loadPosts() {
+            try {
+                const res = await fetch(API_URL + '/posts', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (res.status === 200) {
+                    const posts = await res.json();
+                    const feed = document.getElementById('feed');
+                    feed.innerHTML = posts.map(p => `
+                        <div class="post">
+                            <div class="post-content">${escapeHtml(p.content)}</div>
+                            <div class="post-meta">${new Date(p.created_at).toLocaleString()}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    showError('Failed to load posts');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        function showUIForLoggedIn() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('postSection').classList.remove('hidden');
+            document.getElementById('feedSection').classList.remove('hidden');
+        }
+
+        function showUIForLoggedOut() {
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('postSection').classList.add('hidden');
+            document.getElementById('feedSection').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function logout() {
+            token = null;
+            localStorage.removeItem('token');
+            showUIForLoggedOut();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        if (token) {
+            showUIForLoggedIn();
+            loadPosts();
+        } else {
+            showUIForLoggedOut();
+        }
+    </script>
+</body>
+</html>
