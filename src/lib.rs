@@ -66,6 +66,15 @@ fn serve_static(_path: &str) -> anyhow::Result<Response> {
         .build())
 }
 
+fn serve_favicon() -> anyhow::Result<Response> {
+    let favicon = include_bytes!("../static/favicon.ico");
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "image/x-icon")
+        .body(favicon.to_vec())
+        .build())
+}
+
 // === Component entrypoint ===
 #[http_component]
 fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
@@ -79,6 +88,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", "/posts") => list_posts(req),
         ("DELETE", p) if p.starts_with("/posts/") => delete_post(req),
         ("GET", "/") | ("GET", "/index.html") => serve_static(path),
+        ("GET", "/favicon.ico") => serve_favicon(),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
 }

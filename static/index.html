@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bord</title>
+    <link rel="shortcut icon" href="favicon.ico">
     <style>
         * {
             margin: 0;
@@ -72,11 +73,14 @@
             background: #0056b3;
         }
         button.logout {
-            background: #dc3545;
+            background: #6E6E6E;
             margin-top: 20px;
+            margin-right: 7px;
+            width: 6em;
+            display: inline-block;
         }
         button.logout:hover {
-            background: #c82333;
+            background: #A9A9A9;
         }
         .posts {
             margin-top: 30px;
@@ -156,7 +160,13 @@
 
         <!-- Post Form -->
         <div id="postSection" class="post-form hidden">
-            <button class="logout" onclick="logout()">Log Out</button>
+            <center>
+                <button class="logout">Feed</button>
+                <button class="logout">Followers</button>
+                <button class="logout">Following</button>
+                <button class="logout">Profile</button>
+                <button class="logout" onclick="logout()">Log Out</button>
+            </center>
             <h2 style="margin-bottom: 20px; font-size: 20px;">New Post</h2>
             <textarea id="postContent" placeholder="What's on your mind?"></textarea>
             <button onclick="createPost()">Post</button>
