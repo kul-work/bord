@@ -20,4 +20,4 @@ environment = { BORD_TOKEN_EXPIRATION_HOURS = "24" }
 
 [component.bord.build]
 command = "cargo build --target wasm32-wasip1 --release"
-watch = ["src/**/*.rs", "Cargo.toml"]
+watch = ["src/**/*.rs", "Cargo.toml", "static/**/*"]
