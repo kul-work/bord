@@ -5,6 +5,15 @@ use spin_sdk::{
 };
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
+use sha2::{Sha256, Digest};
+
+// === Config ===
+fn token_expiration_hours() -> i64 {
+    std::env::var("BORD_TOKEN_EXPIRATION_HOURS")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(24)
+}
 
 // === Data models ===
 #[derive(Serialize, Deserialize, Clone)]
@@ -41,6 +50,12 @@ fn unauthorized() -> Response {
     Response::builder().status(401).body("Unauthorized").build()
 }
 
+fn hash_password(password: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(password.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
 // === Component entrypoint ===
 #[http_component]
 fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
@@ -61,11 +76,17 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
 fn create_user(req: Request) -> anyhow::Result<Response> {
     let store = store();
     let body = req.body();
-    //eprintln!("Body: {:?}", std::str::from_utf8(body));
 
     let new_user: serde_json::Value = serde_json::from_slice(body)?;
-    let username = new_user["username"].as_str().unwrap_or("anon");
-    let password = new_user["password"].as_str().unwrap_or_default();
+    let username = new_user["username"].as_str().unwrap_or("");
+    let password = new_user["password"].as_str().unwrap_or("");
+
+    if username.is_empty() {
+        return Ok(Response::builder().status(400).body("Username is required").build());
+    }
+    if password.is_empty() {
+        return Ok(Response::builder().status(400).body("Password is required").build());
+    }
 
     // Check duplicate username
     let existing_users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
@@ -81,7 +102,7 @@ fn create_user(req: Request) -> anyhow::Result<Response> {
     let user = User {
         id: id.clone(),
         username: username.to_string(),
-        password: password.to_string(),
+        password: hash_password(password),
     };
 
     let key = format!("user:{}", id);
@@ -109,7 +130,7 @@ fn login_user(req: Request) -> anyhow::Result<Response> {
 
     for id in users {
         if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
-            if u.username == username && u.password == password {
+            if u.username == username && u.password == hash_password(password) {
                 let token = Uuid::new_v4().to_string();
                 let data = TokenData {
                     user_id: u.id.clone(),
@@ -123,6 +144,7 @@ fn login_user(req: Request) -> anyhow::Result<Response> {
                 });
                 return Ok(Response::builder()
                     .status(200)
+                    .header("Content-Type", "application/json")
                     .body(serde_json::to_vec(&resp)?)
                     .build());
             }
@@ -142,6 +164,14 @@ fn validate_token(req: &Request) -> Option<String> {
     let token = &auth_header[7..];
     let key = format!("token:{}", token);
     if let Some(data) = store.get_json::<TokenData>(&key).ok()? {
+        // Check if token is expired
+        if let Ok(created) = chrono::DateTime::parse_from_rfc3339(&data.created_at) {
+            let now = chrono::Utc::now();
+            let age_hours = (now - created.with_timezone(&chrono::Utc)).num_hours();
+            if age_hours > token_expiration_hours() {
+                return None;
+            }
+        }
         Some(data.user_id)
     } else {
         None
@@ -167,6 +197,11 @@ fn create_post(req: Request) -> anyhow::Result<Response> {
         content: content.to_string(),
         created_at: now_iso(),
     };
+
+    // Add validation
+    if content.is_empty() || content.len() > 5000 {
+        return Ok(Response::builder().status(400).body("Invalid content").build());
+    }
 
     // Save post object
     store.set_json(&format!("post:{}", id), &post)?;
