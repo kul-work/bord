@@ -11,6 +11,7 @@ use uuid::Uuid;
 struct User {
     id: String,
     username: String,
+    password: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -18,6 +19,12 @@ struct Post {
     id: String,
     user_id: String,
     content: String,
+    created_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TokenData {
+    user_id: String,
     created_at: String,
 }
 
@@ -30,6 +37,10 @@ fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
+fn unauthorized() -> Response {
+    Response::builder().status(401).body("Unauthorized").build()
+}
+
 // === Component entrypoint ===
 #[http_component]
 fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
@@ -38,8 +49,9 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
 
     match (method.to_string().as_str(), path) {
         ("POST", "/users") => create_user(req),
+        ("POST", "/login") => login_user(req),
         ("POST", "/posts") => create_post(req),
-        ("GET", "/posts") => list_posts(),
+        ("GET", "/posts") => list_posts(req),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
 }
@@ -50,17 +62,35 @@ fn create_user(req: Request) -> anyhow::Result<Response> {
     let store = store();
     let body = req.body();
     //eprintln!("Body: {:?}", std::str::from_utf8(body));
+
     let new_user: serde_json::Value = serde_json::from_slice(body)?;
     let username = new_user["username"].as_str().unwrap_or("anon");
+    let password = new_user["password"].as_str().unwrap_or_default();
+
+    // Check duplicate username
+    let existing_users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    for id in &existing_users {
+        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+            if u.username == username {
+                return Ok(Response::builder().status(409).body("Username exists").build());
+            }
+        }
+    }
     let id = Uuid::new_v4().to_string();
 
     let user = User {
         id: id.clone(),
         username: username.to_string(),
+        password: password.to_string(),
     };
 
     let key = format!("user:{}", id);
     store.set_json(&key, &user)?;
+
+    // Add to users_list
+    let mut users = existing_users;
+    users.push(id.clone());
+    store.set_json("users_list", &users)?;
 
     Ok(Response::builder()
         .status(201)
@@ -69,11 +99,65 @@ fn create_user(req: Request) -> anyhow::Result<Response> {
         .build())
 }
 
+fn login_user(req: Request) -> anyhow::Result<Response> {
+    let store = store();
+    let creds: serde_json::Value = serde_json::from_slice(req.body())?;
+    let username = creds["username"].as_str().unwrap_or_default();
+    let password = creds["password"].as_str().unwrap_or_default();
+
+    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+
+    for id in users {
+        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+            if u.username == username && u.password == password {
+                let token = Uuid::new_v4().to_string();
+                let data = TokenData {
+                    user_id: u.id.clone(),
+                    created_at: now_iso(),
+                };
+                store.set_json(&format!("token:{}", token), &data)?;
+
+                let resp = serde_json::json!({
+                    "token": token,
+                    "user_id": u.id
+                });
+                return Ok(Response::builder()
+                    .status(200)
+                    .body(serde_json::to_vec(&resp)?)
+                    .build());
+            }
+        }
+    }
+
+    Ok(unauthorized())
+}
+
+// === Auth helper ===
+fn validate_token(req: &Request) -> Option<String> {
+    let store = store();
+    let auth_header = req.header("Authorization")?.as_str().unwrap_or_default();
+    if !auth_header.starts_with("Bearer ") {
+        return None;
+    }
+    let token = &auth_header[7..];
+    let key = format!("token:{}", token);
+    if let Some(data) = store.get_json::<TokenData>(&key).ok()? {
+        Some(data.user_id)
+    } else {
+        None
+    }
+}
+
 fn create_post(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
     let store = store();
     let body = req.body();
+
     let value: serde_json::Value = serde_json::from_slice(body)?;
-    let user_id = value["user_id"].as_str().unwrap_or_default();
     let content = value["content"].as_str().unwrap_or_default();
     let id = Uuid::new_v4().to_string();
 
@@ -99,7 +183,11 @@ fn create_post(req: Request) -> anyhow::Result<Response> {
         .build())
 }
 
-fn list_posts() -> anyhow::Result<Response> {
+fn list_posts(req: Request) -> anyhow::Result<Response> {
+    if validate_token(&req).is_none() {
+        return Ok(unauthorized());
+    }
+
     let store = store();
     let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
 
