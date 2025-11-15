@@ -6,6 +6,7 @@ use spin_sdk::{
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
+use mime_guess::from_path;
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
@@ -72,17 +73,12 @@ fn serve_static(path: &str) -> anyhow::Result<Response> {
 
     let file = Assets::get(file_path)
         .ok_or_else(|| anyhow::anyhow!("File not found"))?;
-    
-    let content_type = match file_path {
-        "index.html" => "text/html; charset=utf-8",
-        "favicon.ico" => "image/x-icon",
-        "B.png" => "image/png",
-        _ => "application/octet-stream",
-    };
+
+    let mime = from_path(file_path).first_or_octet_stream();
 
     Ok(Response::builder()
         .status(200)
-        .header("Content-Type", content_type)
+        .header("Content-Type", mime.as_ref())
         .body(file.data.to_vec())
         .build())
 }
