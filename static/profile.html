@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROFILE_USERNAME - Bord</title>
+    <link rel="shortcut icon" href="/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            margin: 0;
+            color: #222;
+        }
+        .header h1 {
+            color: #209CEE;
+            margin-right: -8px;
+        }
+        .header a {
+            text-decoration: none;
+        }
+        .profile-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .profile-field {
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+        }
+        .profile-field-label {
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .profile-field-value {
+            font-size: 14px;
+            color: #333;
+        }
+        .posts {
+            margin-top: 30px;
+        }
+        .post {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .post-content {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .post-meta {
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/"><h1><img src="/B.png" alt="Bord" style="width: 2em; vertical-align: middle; margin-right: 2px;">ord</h1></a>
+        </div>
+        
+        <div class="profile-section">
+            <h2 style="margin-bottom: 20px; font-size: 20px;">PROFILE_USERNAME's Bord</h2>
+            
+            PROFILE_BIO
+        </div>
+        
+        <div class="posts">
+            <div id="feed"></div>
+        </div>
+    </div>
+    
+    <script>
+        const username = "PROFILE_USERNAME";
+        const userId = "PROFILE_USER_ID";
+        
+        async function loadUserPosts() {
+            try {
+                const url = '/posts?user=' + encodeURIComponent(username);
+                console.log('Fetching posts from:', url, 'for username:', username);
+                const res = await fetch(url);
+                console.log('Response status:', res.status);
+                
+                if (res.status === 200) {
+                    const posts = await res.json();
+                    console.log('Posts received:', posts);
+                    const feed = document.getElementById('feed');
+                    if (posts.length === 0) {
+                        feed.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
+                    } else {
+                        feed.innerHTML = posts.map(p => `
+                            <div class="post">
+                                <div class="post-content">${p.content}</div>
+                                <div class="post-meta">
+                                    <span>${new Date(p.created_at).toLocaleString()}</span>
+                                    ${p.updated_at ? `<span style="margin-left: 8px;">(edited)</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    console.log('Non-200 status');
+                    const text = await res.text();
+                    console.log('Response:', text);
+                    document.getElementById('feed').innerHTML = '<p style="color: #999;">Status: ' + res.status + '</p>';
+                }
+            } catch (err) {
+                console.error('Error loading posts:', err);
+                document.getElementById('feed').innerHTML = '<p style="color: #999;">Error: ' + err.message + '</p>';
+            }
+        }
+        
+        loadUserPosts();
+    </script>
+</body>
+</html>

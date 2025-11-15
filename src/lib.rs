@@ -152,6 +152,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", "/posts") => list_posts(req),
         ("PUT", p) if p.starts_with("/posts/") => edit_post(req),
         ("DELETE", p) if p.starts_with("/posts/") => delete_post(req),
+        ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => get_user_profile(&req, p),
         ("GET", p) => serve_static(p),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
@@ -406,19 +407,70 @@ fn create_post(req: Request) -> anyhow::Result<Response> {
 }
 
 fn list_posts(req: Request) -> anyhow::Result<Response> {
-    let user_id = match validate_token(&req) {
-        Some(uid) => uid,
-        None => return Ok(unauthorized()),
+    let store = store();
+    let uri = req.uri();
+    
+    // Check if this is a public query (filtering by username)
+    let filter_username = if let Some(query_start) = uri.find('?') {
+        let query = &uri[query_start+1..];
+        if query.starts_with("user=") {
+            let encoded_username = &query[5..];
+            // URL decode the username
+            let decoded = urlencoding::decode(encoded_username)
+                .unwrap_or(std::borrow::Cow::Borrowed(encoded_username))
+                .to_string();
+            Some(decoded)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    
+    // If no username filter, require authentication
+    let user_id = if filter_username.is_none() {
+        match validate_token(&req) {
+            Some(uid) => uid,
+            None => return Ok(unauthorized()),
+        }
+    } else {
+        String::new() // Not used for filtered queries
     };
 
-    let store = store();
     let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
 
     let mut posts = Vec::new();
-    for id in feed.iter().take(20) {
-        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
-            if p.user_id == user_id {
-                posts.push(p);
+    
+    if let Some(username) = filter_username {
+        // Public query: get posts for specific username
+        let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+        let mut target_user_id: Option<String> = None;
+        
+        for id in users {
+            if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+                if u.username == username {
+                    target_user_id = Some(u.id);
+                    break;
+                }
+            }
+        }
+        
+        if let Some(uid) = target_user_id {
+            for id in feed.iter().take(20) {
+                if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+                    if p.user_id == uid {
+                        posts.push(p);
+                    }
+                }
+            }
+        }
+    } else {
+        // Authenticated query: get posts for current user
+        for id in feed.iter().take(20) {
+            if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+                if p.user_id == user_id {
+                    posts.push(p);
+                }
             }
         }
     }
@@ -520,4 +572,62 @@ fn delete_post(req: Request) -> anyhow::Result<Response> {
      } else {
          Ok(Response::builder().status(404).body("Post not found").build())
      }
+}
+
+fn get_user_profile(_req: &Request, path: &str) -> anyhow::Result<Response> {
+    let username = path.trim_start_matches('/');
+    let store = store();
+    
+    // Find user by username
+    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    let mut target_user: Option<User> = None;
+    
+    for id in users {
+        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+            if u.username == username {
+                target_user = Some(u);
+                break;
+            }
+        }
+    }
+    
+    if target_user.is_none() {
+        return Ok(Response::builder().status(404).body("User not found").build());
+    }
+    
+    let user = target_user.unwrap();
+    
+    // Load profile.html template
+    let template = Assets::get("profile.html")
+        .ok_or_else(|| anyhow::anyhow!("Profile template not found"))?
+        .data
+        .to_vec();
+    
+    let mut html = String::from_utf8(template)?;
+    
+    // Replace placeholders
+    let escaped_username = html_escape::encode_text(&user.username).to_string();
+    let escaped_user_id = html_escape::encode_text(&user.id).to_string();
+    
+    html = html.replace("PROFILE_USERNAME", &escaped_username);
+    html = html.replace("PROFILE_USER_ID", &escaped_user_id);
+    
+    // Replace bio section
+    let bio_section = user.bio.as_ref()
+        .map(|bio| format!(
+            r#"<div class="profile-field">
+                <div class="profile-field-label">Bio</div>
+                <div class="profile-field-value">{}</div>
+            </div>"#,
+            html_escape::encode_text(bio)
+        ))
+        .unwrap_or_default();
+    
+    html = html.replace("PROFILE_BIO", &bio_section);
+    
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "text/html; charset=utf-8")
+        .body(html.into_bytes())
+        .build())
 }
