@@ -9,6 +9,8 @@ use sha2::{Sha256, Digest};
 use mime_guess::from_path;
 use rust_embed::RustEmbed;
 use regex::Regex;
+use html_escape::encode_double_quoted_attribute;
+use ammonia::Builder;
 
 #[derive(RustEmbed)]
 #[folder = "static"]
@@ -262,11 +264,18 @@ fn validate_token(req: &Request) -> Option<String> {
 // Applies transformations to post content before storage.
 // Add new filters here as needed (e.g., markdown, sanitization, etc.)
 fn filter_post_content(content: &str) -> String {
-    // Convert HTTP/HTTPS URLs into clickable links
+    // Sanitize HTML to remove dangerous scripts and event handlers
+    let clean = Builder::default()
+        .link_rel(Some("noopener noreferrer"))
+        .clean(content)
+        .to_string();
+    
+    // Convert HTTP/HTTPS URLs into clickable links with proper escaping
     let url_pattern = Regex::new(r"https?://[^\s]+").unwrap();
-    url_pattern.replace_all(content, |caps: &regex::Captures| {
+    url_pattern.replace_all(&clean, |caps: &regex::Captures| {
         let url = &caps[0];
-        format!(r#"<a href="{}" target="_blank">{}</a>"#, url, url)
+        let escaped_url = encode_double_quoted_attribute(url);
+        format!(r#"<a href="{}" target="_blank">{}</a>"#, escaped_url, url)
     }).to_string()
 }
 
