@@ -118,6 +118,76 @@
         .delete-btn:hover {
             background: #c82333;
         }
+        .post-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .edit-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-block;
+            width: auto;
+            margin: 0;
+        }
+        .edit-btn:hover {
+            background: #117a8b;
+        }
+        .edited-badge {
+            display: inline-block;
+            font-size: 11px;
+            color: #999;
+            margin-left: 8px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .edit-modal.show {
+            display: flex;
+        }
+        .edit-modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .edit-modal-content h3 {
+            margin-bottom: 15px;
+        }
+        .edit-modal-content textarea {
+            width: 100%;
+            min-height: 100px;
+            margin-bottom: 10px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .modal-buttons button {
+            width: auto;
+            display: inline-block;
+        }
         .error {
             background: #f8d7da;
             color: #721c24;
@@ -174,8 +244,20 @@
 
         <!-- Posts Feed -->
         <div id="feedSection" class="posts hidden">
-            <h2 style="margin-bottom: 20px; font-size: 20px;">Feed</h2>
+            <h2 style="margin-bottom: 20px; font-size: 20px;">My Bords</h2>
             <div id="feed"></div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="editModal" class="edit-modal">
+            <div class="edit-modal-content">
+                <h3>Edit Post</h3>
+                <textarea id="editContent" placeholder="What's on your mind?"></textarea>
+                <div class="modal-buttons">
+                    <button onclick="cancelEdit()" style="background: #6c757d;">Cancel</button>
+                    <button onclick="saveEdit()">Save</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -183,6 +265,7 @@
         const API_URL = window.location.origin;
         let token = localStorage.getItem('token');
         let currentUsername = localStorage.getItem('username');
+        let editingPostId = null;
 
         function showError(msg) {
             const err = document.getElementById('error');
@@ -327,8 +410,14 @@
                         <div class="post">
                             <div class="post-content">${escapeHtml(p.content)}</div>
                             <div class="post-meta">
-                                <span>${new Date(p.created_at).toLocaleString()}</span>
-                                <button class="delete-btn" onclick="deletePost('${p.id}')">X</button>
+                                <div>
+                                    <span>${new Date(p.created_at).toLocaleString()}</span>
+                                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
+                                </div>
+                                <div class="post-actions">
+                                    <button class="edit-btn" onclick="openEditModal('${p.id}', '${escapeHtml(p.content).replace(/'/g, '\\\'')}')"" title="Edit Post">E</button>
+                                    <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
+                                </div>
                             </div>
                         </div>
                     `).join('');
@@ -362,6 +451,50 @@
             usernameDisplay.classList.remove('show');            
             usernameDisplay.textContent = '';
             welcomeDisplay.classList.remove('show');
+        }
+
+        function openEditModal(postId, content) {
+            editingPostId = postId;
+            document.getElementById('editContent').value = content;
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function cancelEdit() {
+            editingPostId = null;
+            document.getElementById('editContent').value = '';
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        async function saveEdit() {
+            const content = document.getElementById('editContent').value.trim();
+
+            if (!content) {
+                showError('Post cannot be empty');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + '/posts/' + editingPostId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                if (res.status === 200) {
+                    cancelEdit();
+                    showSuccess('Post updated!');
+                    loadPosts();
+                } else if (res.status === 403) {
+                    showError('Cannot edit post');
+                } else {
+                    showError('Error updating post');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
         }
 
         function logout() {

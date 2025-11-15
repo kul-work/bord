@@ -29,6 +29,7 @@ struct Post {
     user_id: String,
     content: String,
     created_at: String,
+    updated_at: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -86,6 +87,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("POST", "/login") => login_user(req),
         ("POST", "/posts") => create_post(req),
         ("GET", "/posts") => list_posts(req),
+        ("PUT", p) if p.starts_with("/posts/") => edit_post(req),
         ("DELETE", p) if p.starts_with("/posts/") => delete_post(req),
         ("GET", "/") | ("GET", "/index.html") => serve_static(path),
         ("GET", "/favicon.ico") => serve_favicon(),
@@ -218,6 +220,7 @@ fn create_post(req: Request) -> anyhow::Result<Response> {
         user_id: user_id.to_string(),
         content: content.to_string(),
         created_at: now_iso(),
+        updated_at: None,
     };
 
     // Add validation
@@ -263,6 +266,52 @@ fn list_posts(req: Request) -> anyhow::Result<Response> {
         .header("Content-Type", "application/json")
         .body(serde_json::to_vec(&posts)?)
         .build())
+}
+
+fn edit_post(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    let path = req.path();
+    let post_id = path.split('/').last().unwrap_or("");
+
+    if post_id.is_empty() {
+        return Ok(Response::builder().status(400).body("Post ID required").build());
+    }
+
+    let store = store();
+    let post_key = format!("post:{}", post_id);
+
+    // Check if post exists and belongs to user
+    if let Some(mut post) = store.get_json::<Post>(&post_key)? {
+        if post.user_id != user_id {
+            return Ok(Response::builder().status(403).body("Forbidden").build());
+        }
+
+        let value: serde_json::Value = serde_json::from_slice(req.body())?;
+        let content = value["content"].as_str().unwrap_or_default();
+
+        // Validate content
+        if content.is_empty() || content.len() > 5000 {
+            return Ok(Response::builder().status(400).body("Invalid content").build());
+        }
+
+        // Update post
+        post.content = content.to_string();
+        post.updated_at = Some(now_iso());
+
+        store.set_json(&post_key, &post)?;
+
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&post)?)
+            .build())
+    } else {
+        Ok(Response::builder().status(404).body("Post not found").build())
+    }
 }
 
 fn delete_post(req: Request) -> anyhow::Result<Response> {
