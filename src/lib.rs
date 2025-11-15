@@ -85,9 +85,58 @@ fn serve_logo() -> anyhow::Result<Response> {
         .build())
 }
 
+// === Database initialization ===
+fn init_test_data() -> anyhow::Result<()> {
+    let store = store();
+    
+    // Check if test user already exists
+    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    for id in &users {
+        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+            if u.username == "test" {
+                return Ok(()); // Already initialized
+            }
+        }
+    }
+    
+    // Create test user
+    let user_id = Uuid::new_v4().to_string();
+    let user = User {
+        id: user_id.clone(),
+        username: "test".to_string(),
+        password: hash_password("test"),
+    };
+    
+    store.set_json(&format!("user:{}", user_id), &user)?;
+    
+    let mut users = users;
+    users.push(user_id.clone());
+    store.set_json("users_list", &users)?;
+    
+    // Create test post
+    let post_id = Uuid::new_v4().to_string();
+    let post = Post {
+        id: post_id.clone(),
+        user_id,
+        content: "text text text".to_string(),
+        created_at: now_iso(),
+        updated_at: None,
+    };
+    
+    store.set_json(&format!("post:{}", post_id), &post)?;
+    
+    let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    feed.insert(0, post_id);
+    store.set_json("feed", &feed)?;
+    
+    Ok(())
+}
+
 // === Component entrypoint ===
 #[http_component]
 fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
+    let _ = init_test_data(); // Initialize test data on first request
+    
     let path = req.path();
     let method = req.method();
 
@@ -100,7 +149,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("DELETE", p) if p.starts_with("/posts/") => delete_post(req),
         ("GET", "/") | ("GET", "/index.html") => serve_static(path),
         ("GET", "/favicon.ico") => serve_favicon(),
-        ("GET", "/b.png") => serve_logo(),
+        ("GET", "/B.png") => serve_logo(),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
 }
@@ -325,37 +374,37 @@ fn edit_post(req: Request) -> anyhow::Result<Response> {
 }
 
 fn delete_post(req: Request) -> anyhow::Result<Response> {
-    let user_id = match validate_token(&req) {
-        Some(uid) => uid,
-        None => return Ok(unauthorized()),
-    };
-
-    let path = req.path();
-    let post_id = path.split('/').last().unwrap_or("");
-
-    if post_id.is_empty() {
-        return Ok(Response::builder().status(400).body("Post ID required").build());
-    }
-
-    let store = store();
-    let post_key = format!("post:{}", post_id);
-
-    // Check if post exists and belongs to user
-    if let Some(p) = store.get_json::<Post>(&post_key)? {
-        if p.user_id != user_id {
-            return Ok(Response::builder().status(403).body("Forbidden").build());
-        }
-
-        // Delete the post
-        store.delete(&post_key)?;
-
-        // Remove from feed
-        let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
-        feed.retain(|id| id != post_id);
-        store.set_json("feed", &feed)?;
-
-        Ok(Response::builder().status(204).body("").build())
-    } else {
-        Ok(Response::builder().status(404).body("Post not found").build())
-    }
+     let user_id = match validate_token(&req) {
+         Some(uid) => uid,
+         None => return Ok(unauthorized()),
+     };
+ 
+     let path = req.path();
+     let post_id = path.split('/').last().unwrap_or("");
+ 
+     if post_id.is_empty() {
+         return Ok(Response::builder().status(400).body("Post ID required").build());
+     }
+ 
+     let store = store();
+     let post_key = format!("post:{}", post_id);
+ 
+     // Check if post exists and belongs to user
+     if let Some(p) = store.get_json::<Post>(&post_key)? {
+         if p.user_id != user_id {
+             return Ok(Response::builder().status(403).body("Forbidden").build());
+         }
+ 
+         // Delete the post
+         store.delete(&post_key)?;
+ 
+         // Remove from feed
+         let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+         feed.retain(|id| id != post_id);
+         store.set_json("feed", &feed)?;
+ 
+         Ok(Response::builder().status(204).body("").build())
+     } else {
+         Ok(Response::builder().status(404).body("Post not found").build())
+     }
 }
