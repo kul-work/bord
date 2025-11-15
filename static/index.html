@@ -37,6 +37,9 @@
             color: #209CEE;
             margin-right: -8px;
         }
+        .header a {
+            text-decoration: none;
+        }
         .username-display {
             font-size: 14px;
             color: #666;
@@ -45,7 +48,7 @@
         .username-display.show {
             display: inline-block;            
         }
-        .auth-form, .post-form {
+        .auth-form, .post-form, .profile-form {
             background: white;
             padding: 20px;
             border-radius: 8px;
@@ -85,6 +88,22 @@
         }
         button.logout:hover {
             background: #A9A9A9;
+        }
+        button.nav-btn {
+            background: #6E6E6E;
+            width: auto;
+            display: inline-block;
+            margin: 0 5px 0 0;
+            padding: 8px 12px;
+        }
+        button.nav-btn:hover {
+            background: #555;
+        }
+        button.nav-btn.active {
+            background: #007bff;
+        }
+        button.nav-btn.active:hover {
+            background: #0056b3;
         }
         .posts {
             margin-top: 30px;
@@ -210,13 +229,44 @@
             display: none;
         }
         .success.show { display: block; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group textarea {
+            margin: 0;
+        }
+        .profile-field {
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+        }
+        .profile-field-label {
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .profile-field-value {
+            font-size: 14px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <span id="welcomeDisplay" class="username-display">Welcome on </span>
-            <h1><img src="B.png" alt="Bord" style="width: 2em; vertical-align: middle; margin-right: 2px;">ord</h1><span id="usernameDisplay" class="username-display"></span>
+            <a href="/"><h1><img src="B.png" alt="Bord" style="width: 2em; vertical-align: middle; margin-right: 2px;">ord</h1></a><span id="usernameDisplay" class="username-display"></span>
         </div>
         
         <div id="error" class="error"></div>
@@ -231,15 +281,19 @@
             <button onclick="register()">Sign Up</button>            
         </div>
 
-        <!-- Post Form -->
+        <!-- Navigation -->
         <div id="postSection" class="post-form hidden">
             <center>
-                <button class="logout">Feed</button>
-                <button class="logout">Followers</button>
-                <button class="logout">Following</button>
-                <button class="logout">Profile</button>
+                <button class="nav-btn active" onclick="showFeed()">Feed</button>
+                <button class="nav-btn" onclick="showFollowers()">Followers</button>
+                <button class="nav-btn" onclick="showFollowing()">Following</button>
+                <button class="nav-btn" onclick="showProfile()">Profile</button>
                 <button class="logout" onclick="logout()">Log Out</button>
             </center>
+        </div>
+
+        <!-- New Post Form -->
+        <div id="newPostSection" class="post-form hidden">
             <h2 style="margin-bottom: 20px; font-size: 20px;">New Post</h2>
             <textarea id="postContent" placeholder="What's on your mind?"></textarea>
             <button onclick="createPost()">Post</button>
@@ -249,6 +303,37 @@
         <div id="feedSection" class="posts hidden">
             <h2 style="margin-bottom: 20px; font-size: 20px;">My Bords</h2>
             <div id="feed"></div>
+        </div>
+
+        <!-- Profile Section -->
+        <div id="profileSection" class="profile-form hidden">
+            <h2 style="margin-bottom: 20px; font-size: 20px;">Profile</h2>
+            
+            <div class="profile-field">
+                <div class="profile-field-label">Username</div>
+                <div class="profile-field-value" id="profileUsername">-</div>
+            </div>
+
+            <div class="form-group">
+                <label for="profileBio">BIO</label>
+                <textarea id="profileBio" placeholder="Tell us about yourself..." maxlength="500"></textarea>
+                <small id="bioChars">0/500</small>
+            </div>
+
+            <button onclick="saveBio()" style="background: #28a745;">Save Bio</button>
+
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+
+            <h3 style="margin: 15px 0; font-size: 16px;">Change Password</h3>
+            <div class="form-group">
+                <label for="currentPassword">Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Current password" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" placeholder="New password" autocomplete="new-password">
+            </div>
+            <button onclick="changePassword()" style="background: #dc3545;">Change Password</button>
         </div>
 
         <!-- Edit Modal -->
@@ -268,8 +353,10 @@
         const API_URL = window.location.origin;
         let token = localStorage.getItem('token');
         let currentUsername = localStorage.getItem('username');
+        let currentUserId = localStorage.getItem('user_id');
         let editingPostId = null;
-        let postsMap = {}; // Store posts by ID
+        let postsMap = {};
+        let currentView = 'feed';
 
         function showError(msg) {
             const err = document.getElementById('error');
@@ -283,6 +370,43 @@
             suc.textContent = msg;
             suc.classList.add('show');
             setTimeout(() => suc.classList.remove('show'), 1000);
+        }
+
+        function updateNavButtons(active) {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.textContent.trim() === active) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function showFeed() {
+            currentView = 'feed';
+            document.getElementById('feedSection').classList.remove('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
+            document.getElementById('newPostSection').classList.remove('hidden');
+            updateNavButtons('Feed');
+            loadPosts();
+        }
+
+        function showProfile() {
+            currentView = 'profile';
+            document.getElementById('feedSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.remove('hidden');
+            document.getElementById('newPostSection').classList.add('hidden');
+            updateNavButtons('Profile');
+            loadProfile();
+        }
+
+        function showFollowers() {
+            showError('Followers feature coming soon');
+        }
+
+        function showFollowing() {
+            showError('Following feature coming soon');
         }
 
         async function register() {
@@ -335,8 +459,10 @@
                     const data = await res.json();
                     token = data.token;
                     currentUsername = username;
+                    currentUserId = data.user_id;
                     localStorage.setItem('token', token);
                     localStorage.setItem('username', username);
+                    localStorage.setItem('user_id', currentUserId);
                     showUIForLoggedIn();
                     loadPosts();
                 } else {
@@ -436,21 +562,119 @@
             }
         }
 
+        async function loadProfile() {
+            try {
+                const res = await fetch(API_URL + '/profile', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (res.status === 200) {
+                    const profile = await res.json();
+                    document.getElementById('profileUsername').textContent = profile.username;
+                    document.getElementById('profileBio').value = profile.bio;
+                    updateBioCharCount();
+                } else {
+                    showError('Failed to load profile');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        function updateBioCharCount() {
+            const bioInput = document.getElementById('profileBio');
+            const charCount = bioInput.value.length;
+            document.getElementById('bioChars').textContent = charCount + '/500';
+        }
+
+        async function saveBio() {
+            const bio = document.getElementById('profileBio').value.trim();
+
+            try {
+                const res = await fetch(API_URL + '/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ bio })
+                });
+
+                if (res.status === 200) {
+                    showSuccess('Bio updated!');
+                } else if (res.status === 400) {
+                    showError('Bio too long (max 500 chars)');
+                } else {
+                    showError('Error updating bio');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        async function changePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            if (!currentPassword || !newPassword) {
+                showError('Please fill in all password fields');
+                return;
+            }
+
+            if (newPassword.length < 1) {
+                showError('New password required');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + '/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        old_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                if (res.status === 200) {
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    showSuccess('Password changed!');
+                } else if (res.status === 401) {
+                    showError('Current password is incorrect');
+                } else if (res.status === 400) {
+                    showError('Invalid password');
+                } else {
+                    showError('Error changing password');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
         function showUIForLoggedIn() {
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('postSection').classList.remove('hidden');
+            document.getElementById('newPostSection').classList.remove('hidden');
             document.getElementById('feedSection').classList.remove('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
             const usernameDisplay = document.getElementById('usernameDisplay');
             const welcomeDisplay = document.getElementById('welcomeDisplay');
             usernameDisplay.textContent = ', ' + currentUsername + '!';
             usernameDisplay.classList.add('show');
             welcomeDisplay.classList.add('show');
+            currentView = 'feed';
+            updateNavButtons('Feed');
         }
 
         function showUIForLoggedOut() {
             document.getElementById('authSection').classList.remove('hidden');
             document.getElementById('postSection').classList.add('hidden');
             document.getElementById('feedSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
             const usernameDisplay = document.getElementById('usernameDisplay');
@@ -507,8 +731,10 @@
         function logout() {
             token = null;
             currentUsername = null;
+            currentUserId = null;
             localStorage.removeItem('token');
             localStorage.removeItem('username');
+            localStorage.removeItem('user_id');
             showUIForLoggedOut();
         }
 
@@ -524,7 +750,12 @@
             return div.textContent || div.innerText;
         }
 
-        // Event delegation for edit buttons
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'profileBio') {
+                updateBioCharCount();
+            }
+        });
+
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('edit-btn')) {
                 const postId = e.target.dataset.postId;
@@ -535,7 +766,6 @@
             }
         });
 
-        // Initialize
         if (token) {
             showUIForLoggedIn();
             loadPosts();

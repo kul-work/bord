@@ -30,6 +30,7 @@ struct User {
     id: String,
     username: String,
     password: String,
+    bio: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -106,6 +107,7 @@ fn init_test_data() -> anyhow::Result<()> {
         id: user_id.clone(),
         username: "test".to_string(),
         password: hash_password("test"),
+        bio: None,
     };
     
     store.set_json(&format!("user:{}", user_id), &user)?;
@@ -144,6 +146,8 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
     match (method.to_string().as_str(), path) {
         ("POST", "/users") => create_user(req),
         ("POST", "/login") => login_user(req),
+        ("GET", "/profile") => get_profile(req),
+        ("PUT", "/profile") => update_profile(req),
         ("POST", "/posts") => create_post(req),
         ("GET", "/posts") => list_posts(req),
         ("PUT", p) if p.starts_with("/posts/") => edit_post(req),
@@ -185,6 +189,7 @@ fn create_user(req: Request) -> anyhow::Result<Response> {
         id: id.clone(),
         username: username.to_string(),
         password: hash_password(password),
+        bio: None,
     };
 
     let key = format!("user:{}", id);
@@ -234,6 +239,86 @@ fn login_user(req: Request) -> anyhow::Result<Response> {
     }
 
     Ok(unauthorized())
+}
+
+fn get_profile(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    let store = store();
+    let user_key = format!("user:{}", user_id);
+
+    if let Some(user) = store.get_json::<User>(&user_key)? {
+        // Return user without password
+        let profile = serde_json::json!({
+            "id": user.id,
+            "username": user.username,
+            "bio": user.bio.unwrap_or_default(),
+        });
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&profile)?)
+            .build())
+    } else {
+        Ok(Response::builder().status(404).body("User not found").build())
+    }
+}
+
+fn update_profile(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    let store = store();
+    let user_key = format!("user:{}", user_id);
+
+    if let Some(mut user) = store.get_json::<User>(&user_key)? {
+        let value: serde_json::Value = serde_json::from_slice(req.body())?;
+
+        // Update bio if provided
+        if let Some(bio) = value["bio"].as_str() {
+            if bio.len() > 500 {
+                return Ok(Response::builder().status(400).body("Bio too long (max 500 chars)").build());
+            }
+            user.bio = if bio.is_empty() { None } else { Some(bio.to_string()) };
+        }
+
+        // Update password if provided
+        if let Some(new_password) = value["new_password"].as_str() {
+            if new_password.is_empty() {
+                return Ok(Response::builder().status(400).body("New password cannot be empty").build());
+            }
+            // Verify old password if provided
+            if let Some(old_password) = value["old_password"].as_str() {
+                if user.password != hash_password(old_password) {
+                    return Ok(Response::builder().status(401).body("Invalid current password").build());
+                }
+                user.password = hash_password(new_password);
+            } else {
+                return Ok(Response::builder().status(400).body("Current password required").build());
+            }
+        }
+
+        store.set_json(&user_key, &user)?;
+
+        // Return user without password
+        let profile = serde_json::json!({
+            "id": user.id,
+            "username": user.username,
+            "bio": user.bio.unwrap_or_default(),
+        });
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&profile)?)
+            .build())
+    } else {
+        Ok(Response::builder().status(404).body("User not found").build())
+    }
 }
 
 // === Auth helper ===
