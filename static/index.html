@@ -33,13 +33,17 @@
             margin: 0;
             color: #222;
         }
+        .header h1 {
+            color: #209CEE;
+            margin-right: -8px;
+        }
         .username-display {
             font-size: 14px;
             color: #666;
             display: none;
         }
         .username-display.show {
-            display: inline-block;
+            display: inline-block;            
         }
         .auth-form, .post-form {
             background: white;
@@ -212,8 +216,7 @@
     <div class="container">
         <div class="header">
             <span id="welcomeDisplay" class="username-display">Welcome on </span>
-            <h1>Bord</h1>
-            <span id="usernameDisplay" class="username-display"></span>
+            <h1><img src="b.png" alt="Bord" style="width: 2em; vertical-align: middle; margin-right: 2px;">ord</h1><span id="usernameDisplay" class="username-display"></span>
         </div>
         
         <div id="error" class="error"></div>
@@ -435,7 +438,7 @@
             document.getElementById('feedSection').classList.remove('hidden');
             const usernameDisplay = document.getElementById('usernameDisplay');
             const welcomeDisplay = document.getElementById('welcomeDisplay');
-            usernameDisplay.textContent = currentUsername;
+            usernameDisplay.textContent = ', ' + currentUsername + '!';
             usernameDisplay.classList.add('show');
             welcomeDisplay.classList.add('show');
         }
