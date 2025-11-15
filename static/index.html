@@ -260,6 +260,13 @@
             font-size: 14px;
             color: #333;
         }
+        .user-item {
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+        }
     </style>
 </head>
 <body>
@@ -301,8 +308,14 @@
 
         <!-- Posts Feed -->
         <div id="feedSection" class="posts hidden">
-            <h2 style="margin-bottom: 20px; font-size: 20px;">My Bords</h2>
+            <h2 id="feedTitle" style="margin-bottom: 20px; font-size: 20px;">Bords</h2>
             <div id="feed"></div>
+        </div>
+
+        <!-- Followers/Following Section -->
+        <div id="followersSection" class="profile-form hidden">
+            <h2 id="followersTitle" style="margin-bottom: 20px; font-size: 20px;">Followers</h2>
+            <div id="followersList"></div>
         </div>
 
         <!-- Profile Section -->
@@ -387,9 +400,10 @@
             currentView = 'feed';
             document.getElementById('feedSection').classList.remove('hidden');
             document.getElementById('profileSection').classList.add('hidden');
-            document.getElementById('newPostSection').classList.remove('hidden');
+            document.getElementById('newPostSection').classList.add('hidden');
+            document.getElementById('followersSection').classList.add('hidden');
             updateNavButtons('Feed');
-            loadPosts();
+            loadFeed();
         }
 
         function showProfile() {
@@ -397,17 +411,76 @@
             document.getElementById('feedSection').classList.add('hidden');
             document.getElementById('profileSection').classList.remove('hidden');
             document.getElementById('newPostSection').classList.add('hidden');
+            document.getElementById('followersSection').classList.add('hidden');
             updateNavButtons('Profile');
             loadProfile();
         }
 
         function showFollowers() {
-            showError('Followers feature coming soon');
+            currentView = 'followers';
+            document.getElementById('feedSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
+            document.getElementById('newPostSection').classList.add('hidden');
+            document.getElementById('followersSection').classList.remove('hidden');
+            document.getElementById('followersTitle').textContent = 'Followers';
+            updateNavButtons('Followers');
+            loadFollowersList('followers');
         }
 
         function showFollowing() {
-            showError('Following feature coming soon');
+            currentView = 'following';
+            document.getElementById('feedSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
+            document.getElementById('newPostSection').classList.add('hidden');
+            document.getElementById('followersSection').classList.remove('hidden');
+            document.getElementById('followersTitle').textContent = 'Following';
+            updateNavButtons('Following');
+            loadFollowersList('following');
         }
+
+        async function loadFollowersList(type) {
+             try {
+                 const endpoint = type === 'followers' ? '/followers/' + currentUserId : '/followings/' + currentUserId;
+                 const res = await fetch(endpoint);
+                 
+                 if (res.status === 200) {
+                     const userIds = await res.json();
+                     const section = document.getElementById('followersList');
+                     
+                     if (userIds.length === 0) {
+                         section.innerHTML = '<p style="color: #999; text-align: center;">No ' + type + ' yet</p>';
+                     } else {
+                         // Fetch user details for each ID
+                         let htmlContent = '';
+                         for (const uid of userIds) {
+                             try {
+                                 const userRes = await fetch('/users/' + uid);
+                                 if (userRes.ok) {
+                                     const user = await userRes.json();
+                                     const bioPreview = user.bio ? user.bio.substring(0, 100) + (user.bio.length > 100 ? '...' : '') : 'No bio';
+                                     htmlContent += `
+                                         <div class="user-item">
+                                             <div style="flex: 1;">
+                                                 <a href="/${user.username}" style="font-weight: 600; color: #209CEE; text-decoration: none;">${user.username}</a>
+                                                 <div style="font-size: 12px; color: #666; margin-top: 4px;">${bioPreview}</div>
+                                             </div>
+                                         </div>
+                                     `;
+                                 }
+                             } catch (err) {
+                                 console.error('Error loading user:', err);
+                             }
+                         }
+                         section.innerHTML = htmlContent || '<p style="color: #999;">Error loading users</p>';
+                     }
+                 } else {
+                     document.getElementById('followersList').innerHTML = '<p style="color: #999;">Error loading ' + type + '</p>';
+                 }
+             } catch (err) {
+                 console.error('Error:', err);
+                 document.getElementById('followersList').innerHTML = '<p style="color: #999;">Error: ' + err.message + '</p>';
+             }
+         }
 
         async function register() {
             const username = document.getElementById('username').value.trim();
@@ -529,6 +602,7 @@
 
         async function loadPosts() {
             try {
+                document.getElementById('feedTitle').textContent = 'My Bords';
                 const res = await fetch(API_URL + '/posts', {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
@@ -556,6 +630,54 @@
                     `).join('');
                 } else {
                     showError('Failed to load posts');
+                }
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        async function loadFeed() {
+            try {
+                document.getElementById('feedTitle').textContent = 'World`s Bords';
+                const res = await fetch(API_URL + '/feed', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (res.status === 200) {
+                    const posts = await res.json();
+                    
+                    const feed = document.getElementById('feed');
+                    
+                    // Fetch user details for each post
+                    const postsWithUsers = await Promise.all(posts.map(async (p) => {
+                        try {
+                            const userRes = await fetch(API_URL + '/users/' + p.user_id);
+                            if (userRes.ok) {
+                                const user = await userRes.json();
+                                return { ...p, username: user.username };
+                            }
+                        } catch (err) {
+                            console.error('Error fetching user:', err);
+                        }
+                        return { ...p, username: 'Unknown' };
+                    }));
+                    
+                    feed.innerHTML = postsWithUsers.map(p => `
+                        <div class="post">
+                            <div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
+                                <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
+                            </div>
+                            <div class="post-content">${p.content}</div>
+                            <div class="post-meta">
+                                <div>
+                                    <span>${new Date(p.created_at).toLocaleString()}</span>
+                                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    showError('Failed to load feed');
                 }
             } catch (err) {
                 showError('Network error: ' + err.message);

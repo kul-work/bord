@@ -82,6 +82,29 @@
             font-size: 12px;
             color: #999;
         }
+        .follow-button {
+            padding: 8px 16px;
+            background: #209CEE;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .follow-button:hover {
+            background: #1a7ab5;
+        }
+        .follow-button.following {
+            background: #ccc;
+        }
+        .follow-button.following:hover {
+            background: #999;
+        }
+        .button-container {
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -91,10 +114,10 @@
         </div>
         
         <div class="profile-section">
-            <h2 style="margin-bottom: 20px; font-size: 20px;">PROFILE_USERNAME's Bord</h2>
-            
-            PROFILE_BIO
-        </div>
+             <h2 style="margin-bottom: 20px; font-size: 20px;">PROFILE_USERNAME's Bord</h2>            
+             PROFILE_BIO
+             <div class="button-container" id="follow-container"></div>
+         </div>
         
         <div class="posts">
             <div id="feed"></div>
@@ -104,44 +127,92 @@
     <script>
         const username = "PROFILE_USERNAME";
         const userId = "PROFILE_USER_ID";
+        let currentUserToken = localStorage.getItem('token');
+        let currentUserId = localStorage.getItem('user_id');
         
         async function loadUserPosts() {
-            try {
-                const url = '/posts?user=' + encodeURIComponent(username);
-                console.log('Fetching posts from:', url, 'for username:', username);
-                const res = await fetch(url);
-                console.log('Response status:', res.status);
-                
-                if (res.status === 200) {
-                    const posts = await res.json();
-                    console.log('Posts received:', posts);
-                    const feed = document.getElementById('feed');
-                    if (posts.length === 0) {
-                        feed.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
-                    } else {
-                        feed.innerHTML = posts.map(p => `
-                            <div class="post">
-                                <div class="post-content">${p.content}</div>
-                                <div class="post-meta">
-                                    <span>${new Date(p.created_at).toLocaleString()}</span>
-                                    ${p.updated_at ? `<span style="margin-left: 8px;">(edited)</span>` : ''}
-                                </div>
-                            </div>
-                        `).join('');
-                    }
-                } else {
-                    console.log('Non-200 status');
-                    const text = await res.text();
-                    console.log('Response:', text);
-                    document.getElementById('feed').innerHTML = '<p style="color: #999;">Status: ' + res.status + '</p>';
-                }
-            } catch (err) {
-                console.error('Error loading posts:', err);
-                document.getElementById('feed').innerHTML = '<p style="color: #999;">Error: ' + err.message + '</p>';
-            }
-        }
-        
-        loadUserPosts();
+             try {
+                 const url = '/posts?user=' + encodeURIComponent(username);
+                 console.log('Fetching posts from:', url, 'for username:', username);
+                 const res = await fetch(url);
+                 console.log('Response status:', res.status);
+                 
+                 if (res.status === 200) {
+                     const posts = await res.json();
+                     console.log('Posts received:', posts);
+                     const feed = document.getElementById('feed');
+                     if (posts.length === 0) {
+                         feed.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
+                     } else {
+                         feed.innerHTML = posts.map(p => `
+                             <div class="post">
+                                 <div class="post-content">${p.content}</div>
+                                 <div class="post-meta">
+                                     <span>${new Date(p.created_at).toLocaleString()}</span>
+                                     ${p.updated_at ? `<span style="margin-left: 8px;">(edited)</span>` : ''}
+                                 </div>
+                             </div>
+                         `).join('');
+                     }
+                 } else {
+                     console.log('Non-200 status');
+                     const text = await res.text();
+                     console.log('Response:', text);
+                     document.getElementById('feed').innerHTML = '<p style="color: #999;">Status: ' + res.status + '</p>';
+                 }
+             } catch (err) {
+                 console.error('Error loading posts:', err);
+                 document.getElementById('feed').innerHTML = '<p style="color: #999;">Error: ' + err.message + '</p>';
+             }
+         }
+
+         function renderFollowButton() {
+             const container = document.getElementById('follow-container');
+             
+             // Don't show button if viewing own profile or not logged in
+             if (currentUserId === userId || !currentUserToken) {
+                 container.innerHTML = '';
+                 return;
+             }
+             
+             const button = document.createElement('button');
+             button.className = 'follow-button';
+             button.textContent = 'Follow';
+             button.onclick = toggleFollow;
+             
+             container.appendChild(button);
+         }
+
+         async function toggleFollow(event) {
+             const button = event.target;
+             button.disabled = true;
+             
+             try {
+                 const res = await fetch('/follow', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'Authorization': 'Bearer ' + currentUserToken
+                     },
+                     body: JSON.stringify({
+                         target_user_id: userId
+                     })
+                 });
+                 
+                 if (res.status === 200) {
+                     const data = await res.json();
+                     button.classList.toggle('following', data.following);
+                     button.textContent = data.following ? 'Following' : 'Follow';
+                 }
+             } catch (err) {
+                 console.error('Error toggling follow:', err);
+             } finally {
+                 button.disabled = false;
+             }
+         }
+
+         loadUserPosts();
+         renderFollowButton();
     </script>
 </body>
 </html>

@@ -12,6 +12,9 @@ use regex::Regex;
 use html_escape::encode_double_quoted_attribute;
 use ammonia::Builder;
 
+mod init_db;
+pub use init_db::init_test_data;
+
 #[derive(RustEmbed)]
 #[folder = "static"]
 struct Assets;
@@ -47,6 +50,9 @@ struct TokenData {
     user_id: String,
     created_at: String,
 }
+
+pub type Followings = Vec<String>;
+pub type Followers = Vec<String>;
 
 // === Helpers ===
 fn store() -> Store {
@@ -87,58 +93,12 @@ fn serve_static(path: &str) -> anyhow::Result<Response> {
         .build())
 }
 
-// === Database initialization ===
-fn init_test_data() -> anyhow::Result<()> {
-    let store = store();
-    
-    // Check if test user already exists
-    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
-    for id in &users {
-        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
-            if u.username == "test" {
-                return Ok(()); // Already initialized
-            }
-        }
-    }
-    
-    // Create test user
-    let user_id = Uuid::new_v4().to_string();
-    let user = User {
-        id: user_id.clone(),
-        username: "test".to_string(),
-        password: hash_password("test"),
-        bio: None,
-    };
-    
-    store.set_json(&format!("user:{}", user_id), &user)?;
-    
-    let mut users = users;
-    users.push(user_id.clone());
-    store.set_json("users_list", &users)?;
-    
-    // Create test post
-    let post_id = Uuid::new_v4().to_string();
-    let post = Post {
-        id: post_id.clone(),
-        user_id,
-        content: "text text text".to_string(),
-        created_at: now_iso(),
-        updated_at: None,
-    };
-    
-    store.set_json(&format!("post:{}", post_id), &post)?;
-    
-    let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
-    feed.insert(0, post_id);
-    store.set_json("feed", &feed)?;
-    
-    Ok(())
-}
+
 
 // === Component entrypoint ===
 #[http_component]
 fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
-    let _ = init_test_data(); // Initialize test data on first request
+    let _ = init_test_data(&store()); // Initialize test data on first request
     
     let path = req.path();
     let method = req.method();
@@ -150,8 +110,14 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("PUT", "/profile") => update_profile(req),
         ("POST", "/posts") => create_post(req),
         ("GET", "/posts") => list_posts(req),
+        ("GET", "/feed") => get_feed(req),
         ("PUT", p) if p.starts_with("/posts/") => edit_post(req),
         ("DELETE", p) if p.starts_with("/posts/") => delete_post(req),
+        ("POST", "/follow") => handle_follow(req),
+        ("POST", "/unfollow") => handle_unfollow(req),
+        ("GET", p) if p.starts_with("/followings/") => get_followings_list(p),
+        ("GET", p) if p.starts_with("/followers/") => get_followers_list(p),
+        ("GET", p) if p.starts_with("/users/") && p.len() > 7 => get_user_details(p),
         ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => get_user_profile(&req, p),
         ("GET", p) => serve_static(p),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
@@ -482,6 +448,43 @@ fn list_posts(req: Request) -> anyhow::Result<Response> {
         .build())
 }
 
+fn get_feed(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    let store = store();
+    
+    // Get user's following list
+    let followings: Vec<String> = store.get_json(&format!("followings:{}", user_id))?
+        .unwrap_or_default();
+    
+    // Get all posts from feed
+    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    
+    let mut posts: Vec<Post> = Vec::new();
+    
+    // Collect posts from user and their followings
+    for post_id in feed.iter() {
+        if let Some(p) = store.get_json::<Post>(&format!("post:{}", post_id))? {
+            // Include if post is from user or from someone they follow
+            if p.user_id == user_id || followings.contains(&p.user_id) {
+                posts.push(p);
+            }
+        }
+    }
+    
+    // Sort by created_at in descending order (newest first)
+    posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&posts)?)
+        .build())
+}
+
 fn edit_post(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
@@ -630,4 +633,182 @@ fn get_user_profile(_req: &Request, path: &str) -> anyhow::Result<Response> {
         .header("Content-Type", "text/html; charset=utf-8")
         .body(html.into_bytes())
         .build())
+}
+
+/* UN/FOLLOW mechanism */
+
+pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
+    let followings_key = format!("followings:{}", follower_id);
+    let mut followings: Vec<String> = store
+        .get_json(&followings_key)?
+        .unwrap_or_default();
+    
+    if !followings.contains(&following_id.to_string()) {
+        followings.push(following_id.to_string());
+        store.set_json(&followings_key, &followings)?;
+    }
+    
+    Ok(())
+}
+
+pub fn unfollow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
+    let followings_key = format!("followings:{}", follower_id);
+    let mut followings: Vec<String> = store
+        .get_json(&followings_key)?
+        .unwrap_or_default();
+    
+    followings.retain(|id| id != following_id);
+    store.set_json(&followings_key, &followings)?;
+    
+    Ok(())
+}
+
+pub fn get_followings(store: &Store, user_id: &str) -> anyhow::Result<Vec<String>> {
+    let followings_key = format!("followings:{}", user_id);
+    let followings: Vec<String> = store
+        .get_json(&followings_key)?
+        .unwrap_or_default();
+    
+    Ok(followings)
+}
+
+pub fn get_followers(store: &Store, user_id: &str) -> anyhow::Result<Vec<String>> {
+    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    let mut followers = Vec::new();
+    
+    for id in users {
+        let followings_key = format!("followings:{}", id);
+        if let Ok(Some(followings)) = store.get_json::<Vec<String>>(&followings_key) {
+            if followings.contains(&user_id.to_string()) {
+                followers.push(id);
+            }
+        }
+    }
+    
+    Ok(followers)
+}
+
+fn handle_follow(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    let store = store();
+    let body = req.body();
+    let value: serde_json::Value = serde_json::from_slice(body)?;
+    let target_user_id = value["target_user_id"].as_str().unwrap_or_default();
+
+    if target_user_id.is_empty() || target_user_id == user_id {
+        return Ok(Response::builder().status(400).body("Invalid target user").build());
+    }
+
+    follow_user(&store, &user_id, target_user_id)?;
+
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&serde_json::json!({"status": "followed"}))?)
+        .build())
+}
+
+fn handle_unfollow(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    let store = store();
+    let body = req.body();
+    let value: serde_json::Value = serde_json::from_slice(body)?;
+    let target_user_id = value["target_user_id"].as_str().unwrap_or_default();
+
+    if target_user_id.is_empty() {
+        return Ok(Response::builder().status(400).body("Invalid target user").build());
+    }
+
+    unfollow_user(&store, &user_id, target_user_id)?;
+
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&serde_json::json!({"status": "unfollowed"}))?)
+        .build())
+}
+
+fn get_followings_list(path: &str) -> anyhow::Result<Response> {
+    let user_id = path.trim_start_matches("/followings/");
+    
+    if user_id.is_empty() {
+        return Ok(Response::builder().status(400).body("User ID required").build());
+    }
+
+    let store = store();
+    match get_followings(&store, user_id) {
+        Ok(followings) => {
+            Ok(Response::builder()
+                .status(200)
+                .header("Content-Type", "application/json")
+                .body(serde_json::to_vec(&followings)?)
+                .build())
+        }
+        Err(_) => {
+            Ok(Response::builder()
+                .status(500)
+                .body("Error retrieving followings")
+                .build())
+        }
+    }
+}
+
+fn get_followers_list(path: &str) -> anyhow::Result<Response> {
+    let user_id = path.trim_start_matches("/followers/");
+    
+    if user_id.is_empty() {
+        return Ok(Response::builder().status(400).body("User ID required").build());
+    }
+
+    let store = store();
+    match get_followers(&store, user_id) {
+        Ok(followers) => {
+            Ok(Response::builder()
+                .status(200)
+                .header("Content-Type", "application/json")
+                .body(serde_json::to_vec(&followers)?)
+                .build())
+        }
+        Err(_) => {
+            Ok(Response::builder()
+                .status(500)
+                .body("Error retrieving followers")
+                .build())
+        }
+    }
+}
+
+fn get_user_details(path: &str) -> anyhow::Result<Response> {
+    let user_id = path.trim_start_matches("/users/");
+    
+    if user_id.is_empty() {
+        return Ok(Response::builder().status(400).body("User ID required").build());
+    }
+
+    let store = store();
+    let user_key = format!("user:{}", user_id);
+    
+    if let Some(user) = store.get_json::<User>(&user_key)? {
+        let user_data = serde_json::json!({
+            "id": user.id,
+            "username": user.username,
+            "bio": user.bio.unwrap_or_default(),
+        });
+        
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&user_data)?)
+            .build())
+    } else {
+        Ok(Response::builder().status(404).body("User not found").build())
+    }
 }
