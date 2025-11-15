@@ -6,6 +6,11 @@ use spin_sdk::{
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "static"]
+struct Assets;
 
 // === Config ===
 fn token_expiration_hours() -> i64 {
@@ -58,30 +63,27 @@ fn hash_password(password: &str) -> String {
 }
 
 // === Static file serving ===
-fn serve_static(_path: &str) -> anyhow::Result<Response> {
-    let html = include_bytes!("../static/index.html");
-    Ok(Response::builder()
-        .status(200)
-        .header("Content-Type", "text/html; charset=utf-8")
-        .body(html.to_vec())
-        .build())
-}
+fn serve_static(path: &str) -> anyhow::Result<Response> {
+    let file_path = match path {
+        "/" => "index.html",
+        "/index.html" => "index.html",
+        _ => path.trim_start_matches('/'),
+    };
 
-fn serve_favicon() -> anyhow::Result<Response> {
-    let favicon = include_bytes!("../static/favicon.ico");
-    Ok(Response::builder()
-        .status(200)
-        .header("Content-Type", "image/x-icon")
-        .body(favicon.to_vec())
-        .build())
-}
+    let file = Assets::get(file_path)
+        .ok_or_else(|| anyhow::anyhow!("File not found"))?;
+    
+    let content_type = match file_path {
+        "index.html" => "text/html; charset=utf-8",
+        "favicon.ico" => "image/x-icon",
+        "B.png" => "image/png",
+        _ => "application/octet-stream",
+    };
 
-fn serve_logo() -> anyhow::Result<Response> {
-    let favicon = include_bytes!("../static/b.png");
     Ok(Response::builder()
         .status(200)
-        .header("Content-Type", "image/x-icon")
-        .body(favicon.to_vec())
+        .header("Content-Type", content_type)
+        .body(file.data.to_vec())
         .build())
 }
 
@@ -147,9 +149,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", "/posts") => list_posts(req),
         ("PUT", p) if p.starts_with("/posts/") => edit_post(req),
         ("DELETE", p) if p.starts_with("/posts/") => delete_post(req),
-        ("GET", "/") | ("GET", "/index.html") => serve_static(path),
-        ("GET", "/favicon.ico") => serve_favicon(),
-        ("GET", "/B.png") => serve_logo(),
+        ("GET", p) => serve_static(p),
         _ => Ok(Response::builder().status(404).body("Not found").build()),
     }
 }
