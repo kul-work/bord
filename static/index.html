@@ -269,6 +269,7 @@
         let token = localStorage.getItem('token');
         let currentUsername = localStorage.getItem('username');
         let editingPostId = null;
+        let postsMap = {}; // Store posts by ID
 
         function showError(msg) {
             const err = document.getElementById('error');
@@ -408,17 +409,20 @@
                 
                 if (res.status === 200) {
                     const posts = await res.json();
+                    postsMap = {};
+                    posts.forEach(p => postsMap[p.id] = p);
+                    
                     const feed = document.getElementById('feed');
                     feed.innerHTML = posts.map(p => `
                         <div class="post">
-                            <div class="post-content">${escapeHtml(p.content)}</div>
+                            <div class="post-content">${p.content}</div>
                             <div class="post-meta">
                                 <div>
                                     <span>${new Date(p.created_at).toLocaleString()}</span>
                                     ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
                                 </div>
                                 <div class="post-actions">
-                                    <button class="edit-btn" onclick="openEditModal('${p.id}', '${escapeHtml(p.content).replace(/'/g, '\\\'')}')"" title="Edit Post">E</button>
+                                    <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
                                     <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
                                 </div>
                             </div>
@@ -513,6 +517,23 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function stripHtml(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            return div.textContent || div.innerText;
+        }
+
+        // Event delegation for edit buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('edit-btn')) {
+                const postId = e.target.dataset.postId;
+                const post = postsMap[postId];
+                if (post) {
+                    openEditModal(postId, stripHtml(post.content));
+                }
+            }
+        });
 
         // Initialize
         if (token) {

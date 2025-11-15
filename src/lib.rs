@@ -8,6 +8,7 @@ use uuid::Uuid;
 use sha2::{Sha256, Digest};
 use mime_guess::from_path;
 use rust_embed::RustEmbed;
+use regex::Regex;
 
 #[derive(RustEmbed)]
 #[folder = "static"]
@@ -257,6 +258,18 @@ fn validate_token(req: &Request) -> Option<String> {
     }
 }
 
+// === Post content filters ===
+// Applies transformations to post content before storage.
+// Add new filters here as needed (e.g., markdown, sanitization, etc.)
+fn filter_post_content(content: &str) -> String {
+    // Convert HTTP/HTTPS URLs into clickable links
+    let url_pattern = Regex::new(r"https?://[^\s]+").unwrap();
+    url_pattern.replace_all(content, |caps: &regex::Captures| {
+        let url = &caps[0];
+        format!(r#"<a href="{}" target="_blank">{}</a>"#, url, url)
+    }).to_string()
+}
+
 fn create_post(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
@@ -273,7 +286,7 @@ fn create_post(req: Request) -> anyhow::Result<Response> {
     let post = Post {
         id: id.clone(),
         user_id: user_id.to_string(),
-        content: content.to_string(),
+        content: filter_post_content(content),
         created_at: now_iso(),
         updated_at: None,
     };
@@ -353,8 +366,18 @@ fn edit_post(req: Request) -> anyhow::Result<Response> {
             return Ok(Response::builder().status(400).body("Invalid content").build());
         }
 
+        // Skip update if content didn't change
+        let filtered_content = filter_post_content(content);
+        if post.content == filtered_content {
+            return Ok(Response::builder()
+                .status(200)
+                .header("Content-Type", "application/json")
+                .body(serde_json::to_vec(&post)?)
+                .build());
+        }
+
         // Update post
-        post.content = content.to_string();
+        post.content = filtered_content;
         post.updated_at = Some(now_iso());
 
         store.set_json(&post_key, &post)?;
