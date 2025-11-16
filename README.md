@@ -9,7 +9,7 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 ## Features
 
 - Post creation and retrieval
-- User authentication
+- User authentication, user following mechanism and user feed
 - Content filtering and HTML sanitization
 - Built with WebAssembly (WASM) for portable, lightweight execution
 
