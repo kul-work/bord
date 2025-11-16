@@ -1,5 +1,5 @@
 use spin_sdk::key_value::Store;
-use crate::{User, Post};
+use crate::models::{User, Post};
 use uuid::Uuid;
 
 fn now_iso() -> String {
