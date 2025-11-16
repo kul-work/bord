@@ -2,3 +2,4 @@ target/
 .spin/
 .cargo/
 Cargo.lock
+AGENTS.md
