@@ -328,25 +328,7 @@
                     return { ...p, username: 'Unknown' };
                 }));
                 
-                const feed = document.getElementById('feed');
-                feed.innerHTML = postsWithUsers.map(p => `
-                    <div class="post">
-                        <div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
-                            <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
-                        </div>
-                        <div class="post-content">${p.content}</div>
-                        <div class="post-meta">
-                            <div>
-                                <span>${new Date(p.created_at).toLocaleString()}</span>
-                                ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
-                            </div>
-                            ${p.user_id === currentUserId ? `<div class="post-actions">
-                                <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
-                                <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
-                            </div>` : ''}
-                        </div>
-                    </div>
-                `).join('');
+                renderPosts(postsWithUsers, 'feed', true, true, currentUserId);
             } else {
                 showError('Failed to load posts');
             }
@@ -358,7 +340,6 @@
             
             if (res.ok) {
                 const posts = res.data;
-                const feed = document.getElementById('feed');
                 
                 // Fetch user details for each post
                 const postsWithUsers = await Promise.all(posts.map(async (p) => {
@@ -369,20 +350,7 @@
                     return { ...p, username: 'Unknown' };
                 }));
                 
-                feed.innerHTML = postsWithUsers.map(p => `
-                    <div class="post">
-                        <div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
-                            <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
-                        </div>
-                        <div class="post-content">${p.content}</div>
-                        <div class="post-meta">
-                            <div>
-                                <span>${new Date(p.created_at).toLocaleString()}</span>
-                                ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+                renderPosts(postsWithUsers, 'feed', true, false, currentUserId);
             } else {
                 showError('Failed to load feed');
             }
@@ -405,29 +373,9 @@
             
             if (postsRes.ok) {
                 const posts = postsRes.data;
-                const profilePostsDiv = document.getElementById('profilePosts');
-                
-                if (posts.length === 0) {
-                    profilePostsDiv.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
-                } else {
-                    profilePostsDiv.innerHTML = posts.map(p => `
-                        <div class="post">
-                            <div class="post-content">${p.content}</div>
-                            <div class="post-meta">
-                                <div>
-                                    <span>${new Date(p.created_at).toLocaleString()}</span>
-                                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
-                                </div>
-                                <div class="post-actions">
-                                    <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
-                                    <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                    postsMap = {};
-                    posts.forEach(p => postsMap[p.id] = p);
-                }
+                postsMap = {};
+                posts.forEach(p => postsMap[p.id] = p);
+                renderPosts(posts, 'profilePosts', false, true, currentUserId);
             } else {
                 document.getElementById('profilePosts').innerHTML = '<p style="color: #999;">Error loading posts</p>';
             }

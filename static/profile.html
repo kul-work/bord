@@ -37,20 +37,7 @@
             
             if (res.ok) {
                 const posts = res.data;
-                const feed = document.getElementById('feed');
-                if (posts.length === 0) {
-                    feed.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
-                } else {
-                    feed.innerHTML = posts.map(p => `
-                        <div class="post">
-                            <div class="post-content">${p.content}</div>
-                            <div class="post-meta">
-                                <span>${new Date(p.created_at).toLocaleString()}</span>
-                                ${p.updated_at ? `<span style="margin-left: 8px;">(edited)</span>` : ''}
-                            </div>
-                        </div>
-                    `).join('');
-                }
+                renderPosts(posts, 'feed', false, false, currentUserId);
             } else {
                 document.getElementById('feed').innerHTML = '<p style="color: #999;">Error loading posts</p>';
             }

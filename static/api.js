@@ -96,3 +96,39 @@ function handleSuccess(message) {
         showSuccess(message);
     }
 }
+
+/**
+ * Render posts to a container
+ * @param {Array} postsArray - Array of post objects
+ * @param {string} containerId - ID of the container element
+ * @param {boolean} showUsername - Whether to show username link (default: true)
+ * @param {boolean} showActionsForOwnOnly - Whether to show edit/delete buttons only for own posts (default: false)
+ * @param {string} currentUserId - Current user ID (required if showActionsForOwnOnly is true)
+ */
+function renderPosts(postsArray, containerId, showUsername = true, showActionsForOwnOnly = false, currentUserId = null) {
+    const container = document.getElementById(containerId);
+    
+    if (postsArray.length === 0) {
+        container.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
+        return;
+    }
+    
+    container.innerHTML = postsArray.map(p => `
+        <div class="post">
+            ${showUsername ? `<div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
+                <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
+            </div>` : ''}
+            <div class="post-content">${p.content}</div>
+            <div class="post-meta">
+                <div>
+                    <span>${new Date(p.created_at).toLocaleString()}</span>
+                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
+                </div>
+                ${showActionsForOwnOnly && currentUserId && p.user_id === currentUserId ? `<div class="post-actions">
+                    <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
+                    <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
+                </div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
