@@ -1,8 +1,8 @@
 use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
-use crate::models::{User, TokenData};
+use crate::models::models::{User, TokenData};
 use crate::config::token_expiration_hours;
-use crate::helpers::{store, hash_password, now_iso, unauthorized};
+use crate::core::helpers::{store, hash_password, now_iso, unauthorized};
 
 pub fn login_user(req: Request) -> anyhow::Result<Response> {
     let store = store();

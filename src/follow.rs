@@ -1,6 +1,6 @@
 use spin_sdk::http::{Request, Response};
 use spin_sdk::key_value::Store;
-use crate::helpers::{store, unauthorized};
+use crate::core::helpers::{store, unauthorized};
 use crate::auth::validate_token;
 
 pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {

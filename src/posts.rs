@@ -3,9 +3,9 @@ use uuid::Uuid;
 use regex::Regex;
 use html_escape::encode_double_quoted_attribute;
 use ammonia::Builder;
-use crate::models::User;
-use crate::models::Post;
-use crate::helpers::{store, now_iso, unauthorized};
+use crate::models::models::User;
+use crate::models::models::Post;
+use crate::core::helpers::{store, now_iso, unauthorized};
 use crate::auth::validate_token;
 
 pub fn create_post(req: Request) -> anyhow::Result<Response> {

@@ -3,16 +3,18 @@ use spin_sdk::{
     http_component,
 };
 
-mod db;
+mod core;
 mod models;
 mod config;
-mod static_server;
 mod templates;
-mod helpers;
 mod auth;
 mod users;
 mod posts;
 mod follow;
+
+use core::db;
+use core::helpers;
+use core::static_server;
 
 
 pub use db::init_test_data;

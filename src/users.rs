@@ -1,7 +1,7 @@
 use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
-use crate::models::User;
-use crate::helpers::{store, hash_password, unauthorized};
+use crate::models::models::User;
+use crate::core::helpers::{store, hash_password, unauthorized};
 use crate::auth::validate_token;
 
 

@@ -1,7 +1,7 @@
 use spin_sdk::http::{Request, Response};
 use rust_embed::RustEmbed;
-use crate::models::User;
-use crate::helpers::store;
+use crate::models::models::User;
+use crate::core::helpers::store;
 
 #[derive(RustEmbed)]
 #[folder = "static"]
