@@ -5,269 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bord</title>
     <link rel="shortcut icon" href="favicon.ico">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .hidden { display: none; }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        h1 {
-            margin: 0;
-            color: #222;
-        }
-        .header h1 {
-            color: #209CEE;
-            margin-right: -8px;
-        }
-        .header a {
-            text-decoration: none;
-        }
-        .username-display {
-            font-size: 14px;
-            color: #666;
-            display: none;
-        }
-        .username-display.show {
-            display: inline-block;            
-        }
-        .auth-form, .post-form, .profile-form {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        input, textarea, button {
-            display: block;
-            width: 100%;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-            font-family: inherit;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        button.logout {
-            background: #FFC700;
-            margin-top: 20px;
-            margin-right: 7px;
-            width: 6em;
-            display: inline-block;
-        }
-        button.logout:hover {
-            background: #FFB700;
-        }
-        button.nav-btn {
-            background: #6E6E6E;
-            width: auto;
-            display: inline-block;
-            margin: 0 5px 0 0;
-            padding: 8px 12px;
-        }
-        button.nav-btn:hover {
-            background: #555;
-        }
-        button.nav-btn.active {
-            background: #007bff;
-        }
-        button.nav-btn.active:hover {
-            background: #0056b3;
-        }
-        .posts {
-            margin-top: 30px;
-        }
-        .post {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .post-content {
-            margin-bottom: 8px;
-            line-height: 1.5;
-        }
-        .post-meta {
-            font-size: 12px;
-            color: #999;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            display: inline-block;
-            width: auto;
-            margin: 0;
-        }
-        .delete-btn:hover {
-            background: #c82333;
-        }
-        .post-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .edit-btn {
-            background: #17a2b8;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            display: inline-block;
-            width: auto;
-            margin: 0;
-        }
-        .edit-btn:hover {
-            background: #117a8b;
-        }
-        .edited-badge {
-            display: inline-block;
-            font-size: 11px;
-            color: #999;
-            margin-left: 8px;
-            animation: fadeIn 0.3s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        .edit-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .edit-modal.show {
-            display: flex;
-        }
-        .edit-modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        .edit-modal-content h3 {
-            margin-bottom: 15px;
-        }
-        .edit-modal-content textarea {
-            width: 100%;
-            min-height: 100px;
-            margin-bottom: 10px;
-        }
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-        .modal-buttons button {
-            width: auto;
-            display: inline-block;
-        }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            display: none;
-        }
-        .error.show { display: block; }
-        .success {
-            background: #d4edda;
-            color: #155724;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            display: none;
-        }
-        .success.show { display: block; }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .form-group input,
-        .form-group textarea {
-            margin: 0;
-        }
-        .profile-field {
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            border: 1px solid #eee;
-        }
-        .profile-field-label {
-            font-weight: 600;
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-        .profile-field-value {
-            font-size: 14px;
-            color: #333;
-        }
-        .user-item {
-            padding: 12px;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            background: #f9f9f9;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <script src="api.js"></script>
 </head>
 <body>
     <div class="container">
@@ -363,7 +102,6 @@
     </div>
 
     <script>
-        const API_URL = window.location.origin;
         let token = localStorage.getItem('token');
         let currentUsername = localStorage.getItem('username');
         let currentUserId = localStorage.getItem('user_id');
@@ -439,48 +177,38 @@
         }
 
         async function loadFollowersList(type) {
-             try {
-                 const endpoint = type === 'followers' ? '/followers/' + currentUserId : '/followings/' + currentUserId;
-                 const res = await fetch(endpoint);
-                 
-                 if (res.status === 200) {
-                     const userIds = await res.json();
-                     const section = document.getElementById('followersList');
-                     
-                     if (userIds.length === 0) {
-                         section.innerHTML = '<p style="color: #999; text-align: center;">No ' + type + ' yet</p>';
-                     } else {
-                         // Fetch user details for each ID
-                         let htmlContent = '';
-                         for (const uid of userIds) {
-                             try {
-                                 const userRes = await fetch('/users/' + uid);
-                                 if (userRes.ok) {
-                                     const user = await userRes.json();
-                                     const bioPreview = user.bio ? user.bio.substring(0, 100) + (user.bio.length > 100 ? '...' : '') : 'No bio';
-                                     htmlContent += `
-                                         <div class="user-item">
-                                             <div style="flex: 1;">
-                                                 <a href="/${user.username}" style="font-weight: 600; color: #209CEE; text-decoration: none;">${user.username}</a>
-                                                 <div style="font-size: 12px; color: #666; margin-top: 4px;">${bioPreview}</div>
-                                             </div>
-                                         </div>
-                                     `;
-                                 }
-                             } catch (err) {
-                                 console.error('Error loading user:', err);
-                             }
-                         }
-                         section.innerHTML = htmlContent || '<p style="color: #999;">Error loading users</p>';
-                     }
-                 } else {
-                     document.getElementById('followersList').innerHTML = '<p style="color: #999;">Error loading ' + type + '</p>';
-                 }
-             } catch (err) {
-                 console.error('Error:', err);
-                 document.getElementById('followersList').innerHTML = '<p style="color: #999;">Error: ' + err.message + '</p>';
-             }
-         }
+            const endpoint = type === 'followers' ? '/followers/' + currentUserId : '/followings/' + currentUserId;
+            const res = await apiCall(endpoint, { token });
+            
+            if (res.ok) {
+                const userIds = res.data;
+                const section = document.getElementById('followersList');
+                
+                if (userIds.length === 0) {
+                    section.innerHTML = '<p style="color: #999; text-align: center;">No ' + type + ' yet</p>';
+                } else {
+                    let htmlContent = '';
+                    for (const uid of userIds) {
+                        const userRes = await apiCall('/users/' + uid);
+                        if (userRes.ok) {
+                            const user = userRes.data;
+                            const bioPreview = user.bio ? user.bio.substring(0, 100) + (user.bio.length > 100 ? '...' : '') : 'No bio';
+                            htmlContent += `
+                                <div class="user-item">
+                                    <div style="flex: 1;">
+                                        <a href="/${user.username}" style="font-weight: 600; color: #209CEE; text-decoration: none;">${user.username}</a>
+                                        <div style="font-size: 12px; color: #666; margin-top: 4px;">${bioPreview}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                    section.innerHTML = htmlContent || '<p style="color: #999;">Error loading users</p>';
+                }
+            } else {
+                document.getElementById('followersList').innerHTML = '<p style="color: #999;">Error loading ' + type + '</p>';
+            }
+        }
 
         async function register() {
             const username = document.getElementById('username').value.trim();
@@ -491,24 +219,19 @@
                 return;
             }
 
-            try {
-                const res = await fetch(API_URL + '/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                if (res.status === 201) {
-                    showSuccess('Account created! Now log in.');
-                    document.getElementById('username').value = '';
-                    document.getElementById('password').value = '';
-                } else if (res.status === 409) {
-                    showError('Username already exists');
-                } else {
-                    showError('Error creating account');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            const res = await apiCall('/users', {
+                method: 'POST',
+                body: { username, password }
+            });
+            
+            if (res.status === 201) {
+                showSuccess('Account created! Now log in.');
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            } else if (res.status === 409) {
+                showError('Username already exists');
+            } else {
+                showError('Error creating account');
             }
         }
 
@@ -521,28 +244,23 @@
                 return;
             }
 
-            try {
-                const res = await fetch(API_URL + '/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                if (res.status === 200) {
-                    const data = await res.json();
-                    token = data.token;
-                    currentUsername = username;
-                    currentUserId = data.user_id;
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('user_id', currentUserId);
-                    showUIForLoggedIn();
-                    loadPosts();
-                } else {
-                    showError('Invalid credentials');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            const res = await apiCall('/login', {
+                method: 'POST',
+                body: { username, password }
+            });
+            
+            if (res.ok) {
+                const data = res.data;
+                token = data.token;
+                currentUsername = username;
+                currentUserId = data.user_id;
+                localStorage.setItem('token', token);
+                localStorage.setItem('username', username);
+                localStorage.setItem('user_id', currentUserId);
+                showUIForLoggedIn();
+                loadPosts();
+            } else {
+                showError('Invalid credentials');
             }
         }
 
@@ -554,152 +272,115 @@
                 return;
             }
 
-            try {
-                const res = await fetch(API_URL + '/posts', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({ content })
-                });
-                
-                if (res.status === 201) {
-                    document.getElementById('postContent').value = '';
-                    showSuccess('Post created!');
-                    loadPosts();
-                } else {
-                    showError('Error creating post');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            const res = await apiCall('/posts', {
+                method: 'POST',
+                body: { content },
+                token
+            });
+            
+            if (res.status === 201) {
+                document.getElementById('postContent').value = '';
+                showSuccess('Post created!');
+                loadPosts();
+            } else {
+                showError('Error creating post');
             }
         }
 
         async function deletePost(postId) {
             if (!confirm('Delete this post?')) return;
 
-            try {
-                const res = await fetch(API_URL + '/posts/' + postId, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': 'Bearer ' + token
-                    }
-                });
-                
-                if (res.status === 204) {
-                    showSuccess('Post deleted!');
-                    loadPosts();
-                } else if (res.status === 403) {
-                    showError('Cannot delete post');
-                } else {
-                    showError('Error deleting post');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            const res = await apiCall('/posts/' + postId, {
+                method: 'DELETE',
+                token
+            });
+            
+            if (res.status === 204) {
+                showSuccess('Post deleted!');
+                loadPosts();
+            } else if (res.status === 403) {
+                showError('Cannot delete post');
+            } else {
+                showError('Error deleting post');
             }
         }
 
         async function loadPosts() {
-            try {
-                document.getElementById('feedTitle').textContent = 'My Bords';
-                const res = await fetch(API_URL + '/posts', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+            document.getElementById('feedTitle').textContent = 'My Bords';
+            const res = await apiCall('/posts', { token });
+            
+            if (res.ok) {
+                const posts = res.data;
+                postsMap = {};
+                posts.forEach(p => postsMap[p.id] = p);
                 
-                if (res.status === 200) {
-                    const posts = await res.json();
-                    postsMap = {};
-                    posts.forEach(p => postsMap[p.id] = p);
-                    
-                    const feed = document.getElementById('feed');
-                    feed.innerHTML = posts.map(p => `
-                        <div class="post">
-                            <div class="post-content">${p.content}</div>
-                            <div class="post-meta">
-                                <div>
-                                    <span>${new Date(p.created_at).toLocaleString()}</span>
-                                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
-                                </div>
-                                <div class="post-actions">
-                                    <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
-                                    <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
-                                </div>
+                const feed = document.getElementById('feed');
+                feed.innerHTML = posts.map(p => `
+                    <div class="post">
+                        <div class="post-content">${p.content}</div>
+                        <div class="post-meta">
+                            <div>
+                                <span>${new Date(p.created_at).toLocaleString()}</span>
+                                ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
+                            </div>
+                            <div class="post-actions">
+                                <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
+                                <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
                             </div>
                         </div>
-                    `).join('');
-                } else {
-                    showError('Failed to load posts');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+                    </div>
+                `).join('');
+            } else {
+                showError('Failed to load posts');
             }
         }
 
         async function loadFeed() {
-            try {
-                document.getElementById('feedTitle').textContent = 'World`s Bords';
-                const res = await fetch(API_URL + '/feed', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+            document.getElementById('feedTitle').textContent = 'World`s Bords';
+            const res = await apiCall('/feed', { token });
+            
+            if (res.ok) {
+                const posts = res.data;
+                const feed = document.getElementById('feed');
                 
-                if (res.status === 200) {
-                    const posts = await res.json();
-                    
-                    const feed = document.getElementById('feed');
-                    
-                    // Fetch user details for each post
-                    const postsWithUsers = await Promise.all(posts.map(async (p) => {
-                        try {
-                            const userRes = await fetch(API_URL + '/users/' + p.user_id);
-                            if (userRes.ok) {
-                                const user = await userRes.json();
-                                return { ...p, username: user.username };
-                            }
-                        } catch (err) {
-                            console.error('Error fetching user:', err);
-                        }
-                        return { ...p, username: 'Unknown' };
-                    }));
-                    
-                    feed.innerHTML = postsWithUsers.map(p => `
-                        <div class="post">
-                            <div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
-                                <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
-                            </div>
-                            <div class="post-content">${p.content}</div>
-                            <div class="post-meta">
-                                <div>
-                                    <span>${new Date(p.created_at).toLocaleString()}</span>
-                                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
-                                </div>
+                // Fetch user details for each post
+                const postsWithUsers = await Promise.all(posts.map(async (p) => {
+                    const userRes = await apiCall('/users/' + p.user_id);
+                    if (userRes.ok) {
+                        return { ...p, username: userRes.data.username };
+                    }
+                    return { ...p, username: 'Unknown' };
+                }));
+                
+                feed.innerHTML = postsWithUsers.map(p => `
+                    <div class="post">
+                        <div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
+                            <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
+                        </div>
+                        <div class="post-content">${p.content}</div>
+                        <div class="post-meta">
+                            <div>
+                                <span>${new Date(p.created_at).toLocaleString()}</span>
+                                ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
                             </div>
                         </div>
-                    `).join('');
-                } else {
-                    showError('Failed to load feed');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+                    </div>
+                `).join('');
+            } else {
+                showError('Failed to load feed');
             }
         }
 
         async function loadProfile() {
-            try {
-                const res = await fetch(API_URL + '/profile', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                
-                if (res.status === 200) {
-                    const profile = await res.json();
-                    document.getElementById('profileUsername').textContent = profile.username;
-                    document.getElementById('profileBio').value = profile.bio;
-                    updateBioCharCount();
-                } else {
-                    showError('Failed to load profile');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            const res = await apiCall('/profile', { token });
+            
+            if (res.ok) {
+                const profile = res.data;
+                document.getElementById('profileUsername').textContent = profile.username;
+                document.getElementById('profileBio').value = profile.bio;
+                updateBioCharCount();
+            } else {
+                showError('Failed to load profile');
             }
         }
 
@@ -712,25 +393,18 @@
         async function saveBio() {
             const bio = document.getElementById('profileBio').value.trim();
 
-            try {
-                const res = await fetch(API_URL + '/profile', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({ bio })
-                });
+            const res = await apiCall('/profile', {
+                method: 'PUT',
+                body: { bio },
+                token
+            });
 
-                if (res.status === 200) {
-                    showSuccess('Bio updated!');
-                } else if (res.status === 400) {
-                    showError('Bio too long (max 500 chars)');
-                } else {
-                    showError('Error updating bio');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            if (res.ok) {
+                showSuccess('Bio updated!');
+            } else if (res.status === 400) {
+                showError('Bio too long (max 500 chars)');
+            } else {
+                showError('Error updating bio');
             }
         }
 
@@ -748,32 +422,25 @@
                 return;
             }
 
-            try {
-                const res = await fetch(API_URL + '/profile', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({
-                        old_password: currentPassword,
-                        new_password: newPassword
-                    })
-                });
+            const res = await apiCall('/profile', {
+                method: 'PUT',
+                body: {
+                    old_password: currentPassword,
+                    new_password: newPassword
+                },
+                token
+            });
 
-                if (res.status === 200) {
-                    document.getElementById('currentPassword').value = '';
-                    document.getElementById('newPassword').value = '';
-                    showSuccess('Password changed!');
-                } else if (res.status === 401) {
-                    showError('Current password is incorrect');
-                } else if (res.status === 400) {
-                    showError('Invalid password');
-                } else {
-                    showError('Error changing password');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            if (res.ok) {
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                showSuccess('Password changed!');
+            } else if (res.status === 401) {
+                showError('Current password is incorrect');
+            } else if (res.status === 400) {
+                showError('Invalid password');
+            } else {
+                showError('Error changing password');
             }
         }
 
@@ -827,27 +494,20 @@
                 return;
             }
 
-            try {
-                const res = await fetch(API_URL + '/posts/' + editingPostId, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({ content })
-                });
+            const res = await apiCall('/posts/' + editingPostId, {
+                method: 'PUT',
+                body: { content },
+                token
+            });
 
-                if (res.status === 200) {
-                    cancelEdit();
-                    showSuccess('Post updated!');
-                    loadPosts();
-                } else if (res.status === 403) {
-                    showError('Cannot edit post');
-                } else {
-                    showError('Error updating post');
-                }
-            } catch (err) {
-                showError('Network error: ' + err.message);
+            if (res.ok) {
+                cancelEdit();
+                showSuccess('Post updated!');
+                loadPosts();
+            } else if (res.status === 403) {
+                showError('Cannot edit post');
+            } else {
+                showError('Error updating post');
             }
         }
 
@@ -859,12 +519,6 @@
             localStorage.removeItem('username');
             localStorage.removeItem('user_id');
             showUIForLoggedOut();
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
 
         function stripHtml(html) {
