@@ -3,11 +3,30 @@ use uuid::Uuid;
 use crate::models::User;
 use crate::helpers::{store, hash_password, unauthorized};
 use crate::auth::validate_token;
-use rust_embed::RustEmbed;
 
-#[derive(RustEmbed)]
-#[folder = "static"]
-struct Assets;
+
+fn build_user_json(user: &User) -> serde_json::Value {
+    serde_json::json!({
+        "id": user.id,
+        "username": user.username,
+        "bio": user.bio.as_ref().unwrap_or(&String::new()),
+    })
+}
+
+fn get_user_by_id(user_id: &str) -> anyhow::Result<Response> {
+    let store = store();
+    let user_key = format!("user:{}", user_id);
+    
+    if let Some(user) = store.get_json::<User>(&user_key)? {
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(serde_json::to_vec(&build_user_json(&user))?)
+            .build())
+    } else {
+        Ok(Response::builder().status(404).body("User not found").build())
+    }
+}
 
 pub fn create_user(req: Request) -> anyhow::Result<Response> {
     let store = store();
@@ -57,6 +76,25 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
         .build())
 }
 
+pub fn get_profile(req: Request) -> anyhow::Result<Response> {
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
+
+    get_user_by_id(&user_id)
+}
+
+pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
+    let user_id = path.trim_start_matches("/users/");
+    
+    if user_id.is_empty() {
+        return Ok(Response::builder().status(400).body("User ID required").build());
+    }
+
+    get_user_by_id(user_id)
+}
+
 pub fn update_profile(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
@@ -95,127 +133,12 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
 
         store.set_json(&user_key, &user)?;
 
-        let profile = serde_json::json!({
-            "id": user.id,
-            "username": user.username,
-            "bio": user.bio.unwrap_or_default(),
-        });
         Ok(Response::builder()
             .status(200)
             .header("Content-Type", "application/json")
-            .body(serde_json::to_vec(&profile)?)
+            .body(serde_json::to_vec(&build_user_json(&user))?)
             .build())
     } else {
         Ok(Response::builder().status(404).body("User not found").build())
     }
-}
-
-pub fn get_profile(req: Request) -> anyhow::Result<Response> {
-    let user_id = match validate_token(&req) {
-        Some(uid) => uid,
-        None => return Ok(unauthorized()),
-    };
-
-    let store = store();
-    let user_key = format!("user:{}", user_id);
-
-    if let Some(user) = store.get_json::<User>(&user_key)? {
-        let profile = serde_json::json!({
-            "id": user.id,
-            "username": user.username,
-            "bio": user.bio.unwrap_or_default(),
-        });
-        Ok(Response::builder()
-            .status(200)
-            .header("Content-Type", "application/json")
-            .body(serde_json::to_vec(&profile)?)
-            .build())
-    } else {
-        Ok(Response::builder().status(404).body("User not found").build())
-    }
-}
-
-pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
-    let user_id = path.trim_start_matches("/users/");
-    
-    if user_id.is_empty() {
-        return Ok(Response::builder().status(400).body("User ID required").build());
-    }
-
-    let store = store();
-    let user_key = format!("user:{}", user_id);
-    
-    if let Some(user) = store.get_json::<User>(&user_key)? {
-        let user_data = serde_json::json!({
-            "id": user.id,
-            "username": user.username,
-            "bio": user.bio.unwrap_or_default(),
-        });
-        
-        Ok(Response::builder()
-            .status(200)
-            .header("Content-Type", "application/json")
-            .body(serde_json::to_vec(&user_data)?)
-            .build())
-    } else {
-        Ok(Response::builder().status(404).body("User not found").build())
-    }
-}
-
-pub fn get_user_profile(_req: &Request, path: &str) -> anyhow::Result<Response> {
-    let username = path.trim_start_matches('/');
-    let store = store();
-    
-    // Find user by username
-    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
-    let mut target_user: Option<User> = None;
-    
-    for id in users {
-        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
-            if u.username == username {
-                target_user = Some(u);
-                break;
-            }
-        }
-    }
-    
-    if target_user.is_none() {
-        return Ok(Response::builder().status(404).body("User not found").build());
-    }
-    
-    let user = target_user.unwrap();
-    
-    // Load profile.html template
-    let template = Assets::get("profile.html")
-        .ok_or_else(|| anyhow::anyhow!("Profile template not found"))?
-        .data
-        .to_vec();
-    
-    let mut html = String::from_utf8(template)?;
-    
-    // Replace placeholders
-    let escaped_username = html_escape::encode_text(&user.username).to_string();
-    let escaped_user_id = html_escape::encode_text(&user.id).to_string();
-    
-    html = html.replace("PROFILE_USERNAME", &escaped_username);
-    html = html.replace("PROFILE_USER_ID", &escaped_user_id);
-    
-    // Replace bio section
-    let bio_section = user.bio.as_ref()
-        .map(|bio| format!(
-            r#"<div class="profile-field">
-                <div class="profile-field-label">Bio</div>
-                <div class="profile-field-value">{}</div>
-            </div>"#,
-            html_escape::encode_text(bio)
-        ))
-        .unwrap_or_default();
-    
-    html = html.replace("PROFILE_BIO", &bio_section);
-    
-    Ok(Response::builder()
-        .status(200)
-        .header("Content-Type", "text/html; charset=utf-8")
-        .body(html.into_bytes())
-        .build())
 }

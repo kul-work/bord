@@ -7,12 +7,14 @@ mod db;
 mod models;
 mod config;
 mod static_server;
+mod templates;
 mod helpers;
 mod auth;
 mod users;
 mod posts;
 mod handlers;
 mod follow;
+
 
 pub use db::init_test_data;
 
@@ -39,7 +41,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", p) if p.starts_with("/followings/") => handlers::get_followings_list(p),
         ("GET", p) if p.starts_with("/followers/") => handlers::get_followers_list(p),
         ("GET", p) if p.starts_with("/users/") && p.len() > 7 => users::get_user_details(p),
-        ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => users::get_user_profile(&req, p),
+        ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => templates::render_user_profile(&req, p),
         ("GET", p) => static_server::serve_static(p),
         _ => Ok(spin_sdk::http::Response::builder().status(404).body("Not found").build()),
     }
