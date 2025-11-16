@@ -1,6 +1,8 @@
 use spin_sdk::http::Response;
 use spin_sdk::key_value::Store;
-use sha2::{Sha256, Digest};
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use argon2::password_hash::SaltString;
+use rand::rngs::OsRng;
 
 pub fn store() -> Store {
     Store::open_default().expect("KV store must exist")
@@ -15,7 +17,24 @@ pub fn unauthorized() -> Response {
 }
 
 pub fn hash_password(password: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(password.as_bytes());
-    format!("{:x}", hasher.finalize())
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .expect("Failed to hash password")
+        .to_string()
+}
+
+pub fn verify_password(password: &str, hash: &str) -> bool {
+    use argon2::PasswordHash;
+    
+    let parsed_hash = match PasswordHash::new(hash) {
+        Ok(h) => h,
+        Err(_) => return false,
+    };
+    
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok()
 }

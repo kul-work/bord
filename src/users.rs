@@ -1,7 +1,7 @@
 use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
 use crate::models::models::User;
-use crate::core::helpers::{store, hash_password, unauthorized};
+use crate::core::helpers::{store, hash_password, verify_password, unauthorized};
 use crate::auth::validate_token;
 
 
@@ -121,10 +121,10 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
                 return Ok(Response::builder().status(400).body("New password cannot be empty").build());
             }
             // Verify old password if provided
-            if let Some(old_password) = value["old_password"].as_str() {
-                if user.password != hash_password(old_password) {
-                    return Ok(Response::builder().status(401).body("Invalid current password").build());
-                }
+             if let Some(old_password) = value["old_password"].as_str() {
+                 if !verify_password(old_password, &user.password) {
+                     return Ok(Response::builder().status(401).body("Invalid current password").build());
+                 }
                 user.password = hash_password(new_password);
             } else {
                 return Ok(Response::builder().status(400).body("Current password required").build());

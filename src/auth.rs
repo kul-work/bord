@@ -2,7 +2,7 @@ use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
 use crate::models::models::{User, TokenData};
 use crate::config::token_expiration_hours;
-use crate::core::helpers::{store, hash_password, now_iso, unauthorized};
+use crate::core::helpers::{store, verify_password, now_iso, unauthorized};
 
 pub fn login_user(req: Request) -> anyhow::Result<Response> {
     let store = store();
@@ -14,7 +14,7 @@ pub fn login_user(req: Request) -> anyhow::Result<Response> {
 
     for id in users {
         if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
-            if u.username == username && u.password == hash_password(password) {
+            if u.username == username && verify_password(password, &u.password) {
                 let token = Uuid::new_v4().to_string();
                 let data = TokenData {
                     user_id: u.id.clone(),

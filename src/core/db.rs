@@ -1,16 +1,10 @@
 use spin_sdk::key_value::Store;
 use crate::models::models::{User, Post};
+use crate::core::helpers::{hash_password, now_iso as helpers_now_iso};
 use uuid::Uuid;
 
 fn now_iso() -> String {
-    chrono::Utc::now().to_rfc3339()
-}
-
-fn hash_password(password: &str) -> String {
-    use sha2::{Sha256, Digest};
-    let mut hasher = Sha256::new();
-    hasher.update(password.as_bytes());
-    format!("{:x}", hasher.finalize())
+    helpers_now_iso()
 }
 
 pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
