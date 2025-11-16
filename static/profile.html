@@ -56,7 +56,7 @@
             }
         }
 
-        function renderFollowButton() {
+        async function renderFollowButton() {
             const container = document.getElementById('follow-container');
             
             // Don't show button if viewing own profile or not logged in
@@ -65,9 +65,22 @@
                 return;
             }
             
+            // Check current following status
+            let isFollowing = false;
+            const res = await apiCall('/followings/' + currentUserId);
+            if (res.ok) {
+                const followings = res.data;
+                isFollowing = followings.includes(userId);
+            }
+            
             const button = document.createElement('button');
             button.className = 'follow-button';
-            button.textContent = 'Follow';
+            if (isFollowing) {
+                button.classList.add('following');
+                button.textContent = 'Unfollow';
+            } else {
+                button.textContent = 'Follow';
+            }
             button.onclick = toggleFollow;
             
             container.appendChild(button);
@@ -77,23 +90,27 @@
             const button = event.target;
             button.disabled = true;
             
-            const res = await apiCall('/follow', {
+            const isFollowing = button.classList.contains('following');
+            const endpoint = isFollowing ? '/unfollow' : '/follow';
+            
+            const res = await apiCall(endpoint, {
                 method: 'POST',
                 body: { target_user_id: userId },
                 token: currentUserToken
             });
             
             if (res.ok) {
-                const data = res.data;
-                button.classList.toggle('following', data.following);
-                button.textContent = data.following ? 'Following' : 'Follow';
+                button.classList.toggle('following');
+                button.textContent = button.classList.contains('following') ? 'Unfollow' : 'Follow';
             }
             
             button.disabled = false;
         }
 
-        loadUserPosts();
-        renderFollowButton();
+        (async function() {
+            loadUserPosts();
+            await renderFollowButton();
+        })();
     </script>
 </body>
 </html>
