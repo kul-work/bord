@@ -12,7 +12,6 @@ mod helpers;
 mod auth;
 mod users;
 mod posts;
-mod handlers;
 mod follow;
 
 
@@ -36,10 +35,10 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", "/feed") => posts::get_feed(req),
         ("PUT", p) if p.starts_with("/posts/") => posts::edit_post(req),
         ("DELETE", p) if p.starts_with("/posts/") => posts::delete_post(req),
-        ("POST", "/follow") => handlers::handle_follow(req),
-        ("POST", "/unfollow") => handlers::handle_unfollow(req),
-        ("GET", p) if p.starts_with("/followings/") => handlers::get_followings_list(p),
-        ("GET", p) if p.starts_with("/followers/") => handlers::get_followers_list(p),
+        ("POST", "/follow") => follow::handle_follow(req),
+        ("POST", "/unfollow") => follow::handle_unfollow(req),
+        ("GET", p) if p.starts_with("/followings/") => follow::get_followings_list(p),
+        ("GET", p) if p.starts_with("/followers/") => follow::get_followers_list(p),
         ("GET", p) if p.starts_with("/users/") && p.len() > 7 => users::get_user_details(p),
         ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => templates::render_user_profile(&req, p),
         ("GET", p) => static_server::serve_static(p),
