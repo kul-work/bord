@@ -86,6 +86,11 @@
                 <input type="password" id="newPassword" placeholder="New password" autocomplete="new-password">
             </div>
             <button onclick="changePassword()" style="background: #dc3545;">Change Password</button>
+
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+
+            <h3 style="margin: 15px 0; font-size: 16px;">My Bords</h3>
+            <div id="profilePosts"></div>
         </div>
 
         <!-- Edit Modal -->
@@ -306,27 +311,39 @@
         }
 
         async function loadPosts() {
-            document.getElementById('feedTitle').textContent = 'My Bords';
-            const res = await apiCall('/posts', { token });
+            document.getElementById('feedTitle').textContent = 'World`s Bord';
+            const res = await apiCall('/posts?all=true', {});
             
             if (res.ok) {
                 const posts = res.data;
                 postsMap = {};
                 posts.forEach(p => postsMap[p.id] = p);
                 
+                // Fetch user details for each post
+                const postsWithUsers = await Promise.all(posts.map(async (p) => {
+                    const userRes = await apiCall('/users/' + p.user_id);
+                    if (userRes.ok) {
+                        return { ...p, username: userRes.data.username };
+                    }
+                    return { ...p, username: 'Unknown' };
+                }));
+                
                 const feed = document.getElementById('feed');
-                feed.innerHTML = posts.map(p => `
+                feed.innerHTML = postsWithUsers.map(p => `
                     <div class="post">
+                        <div style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: 500;">
+                            <a href="/${p.username}" style="color: #209CEE; text-decoration: none;">${p.username}</a>
+                        </div>
                         <div class="post-content">${p.content}</div>
                         <div class="post-meta">
                             <div>
                                 <span>${new Date(p.created_at).toLocaleString()}</span>
                                 ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
                             </div>
-                            <div class="post-actions">
+                            ${p.user_id === currentUserId ? `<div class="post-actions">
                                 <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
                                 <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
-                            </div>
+                            </div>` : ''}
                         </div>
                     </div>
                 `).join('');
@@ -336,7 +353,7 @@
         }
 
         async function loadFeed() {
-            document.getElementById('feedTitle').textContent = 'World`s Bords';
+            document.getElementById('feedTitle').textContent = 'Bords on watch';
             const res = await apiCall('/feed', { token });
             
             if (res.ok) {
@@ -381,6 +398,38 @@
                 updateBioCharCount();
             } else {
                 showError('Failed to load profile');
+            }
+
+            // Load user's posts
+            const postsRes = await apiCall('/posts', { token });
+            
+            if (postsRes.ok) {
+                const posts = postsRes.data;
+                const profilePostsDiv = document.getElementById('profilePosts');
+                
+                if (posts.length === 0) {
+                    profilePostsDiv.innerHTML = '<p style="color: #999; text-align: center;">No posts yet</p>';
+                } else {
+                    profilePostsDiv.innerHTML = posts.map(p => `
+                        <div class="post">
+                            <div class="post-content">${p.content}</div>
+                            <div class="post-meta">
+                                <div>
+                                    <span>${new Date(p.created_at).toLocaleString()}</span>
+                                    ${p.updated_at ? `<span class="edited-badge" title="Updated: ${new Date(p.updated_at).toLocaleString()}">(edited)</span>` : ''}
+                                </div>
+                                <div class="post-actions">
+                                    <button class="edit-btn" data-post-id="${p.id}" title="Edit Post">E</button>
+                                    <button class="delete-btn" onclick="deletePost('${p.id}')" title="Delete Post">X</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    postsMap = {};
+                    posts.forEach(p => postsMap[p.id] = p);
+                }
+            } else {
+                document.getElementById('profilePosts').innerHTML = '<p style="color: #999;">Error loading posts</p>';
             }
         }
 

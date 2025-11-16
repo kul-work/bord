@@ -162,25 +162,31 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
     let store = store();
     let uri = req.uri();
     
-    // Check if this is a public query (filtering by username)
-    let filter_username = if let Some(query_start) = uri.find('?') {
+    // Check for query parameters
+    let (filter_username, show_all) = if let Some(query_start) = uri.find('?') {
         let query = &uri[query_start+1..];
-        if query.starts_with("user=") {
-            let encoded_username = &query[5..];
-            // URL decode the username
-            let decoded = urlencoding::decode(encoded_username)
-                .unwrap_or(std::borrow::Cow::Borrowed(encoded_username))
-                .to_string();
-            Some(decoded)
-        } else {
-            None
+        let mut username = None;
+        let mut all = false;
+        
+        for param in query.split('&') {
+            if param.starts_with("user=") {
+                let encoded_username = &param[5..];
+                let decoded = urlencoding::decode(encoded_username)
+                    .unwrap_or(std::borrow::Cow::Borrowed(encoded_username))
+                    .to_string();
+                username = Some(decoded);
+            } else if param == "all=true" {
+                all = true;
+            }
         }
+        (username, all)
     } else {
-        None
+        (None, false)
     };
     
-    // If no username filter, require authentication
-    let user_id = if filter_username.is_none() {
+    // If filtering by username or showing all, no auth required
+    // Otherwise, require authentication for personal posts
+    let user_id = if filter_username.is_none() && !show_all {
         match validate_token(&req) {
             Some(uid) => uid,
             None => return Ok(unauthorized()),
@@ -214,6 +220,13 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
                         posts.push(p);
                     }
                 }
+            }
+        }
+    } else if show_all {
+        // Get all posts from the global feed, sorted by creation date
+        for id in feed.iter() {
+            if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+                posts.push(p);
             }
         }
     } else {
@@ -254,8 +267,8 @@ pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     // Collect posts from user and their followings
     for post_id in feed.iter() {
         if let Some(p) = store.get_json::<Post>(&format!("post:{}", post_id))? {
-            // Include if post is from user or from someone they follow
-            if p.user_id == user_id || followings.contains(&p.user_id) {
+            // Include if post is from someone they follow
+            if followings.contains(&p.user_id) {
                 posts.push(p);
             }
         }
