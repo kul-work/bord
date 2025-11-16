@@ -55,6 +55,11 @@ pub fn validate_token(req: &Request) -> Option<String> {
                 return None;
             }
         }
+        // Check if user still exists
+        let user_key = format!("user:{}", data.user_id);
+        if store.get_json::<User>(&user_key).ok()?.is_none() {
+            return None;
+        }
         Some(data.user_id)
     } else {
         None
