@@ -52,7 +52,7 @@ async fn test_full_user_flow() {
 
     // 3. Create post
     let post_body = json!({
-        "content": "Test post from integration test!"
+        "content": "Test post from integration test."
     });
 
     let post_resp = client
@@ -65,13 +65,13 @@ async fn test_full_user_flow() {
 
     assert_eq!(post_resp.status(), 201);
     let post = post_resp.json::<serde_json::Value>().await.unwrap();
-    assert_eq!(post["content"], "Test post from integration test!");
+    assert_eq!(post["content"], "Test post from integration test.");
     assert_eq!(post["user_id"], user_id);
     let post_id = post["id"].as_str().unwrap().to_string();
 
     // 4. Edit post
     let edit_body = json!({
-        "content": "Updated content from integration test!"
+        "content": "Updated content from integration test."
     });
 
     let edit_resp = client
@@ -84,7 +84,7 @@ async fn test_full_user_flow() {
 
     assert_eq!(edit_resp.status(), 200);
     let edited_post = edit_resp.json::<serde_json::Value>().await.unwrap();
-    assert_eq!(edited_post["content"], "Updated content from integration test!");
+    assert_eq!(edited_post["content"], "Updated content from integration test.");
     assert!(edited_post["updated_at"].is_string(), "updated_at should be set after edit");
 }
 

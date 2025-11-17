@@ -140,21 +140,18 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
  
          // Update password if provided
          if let Some(new_password) = value["new_password"].as_str() {
-             if new_password.is_empty() {
-                 return Ok(ApiError::BadRequest("New password cannot be empty".to_string()).into());
-             }
-             if new_password.len() < MIN_PASSWORD_LENGTH {
-                 return Ok(ApiError::BadRequest("Password must be at least 3 characters".to_string()).into());
-             }
-             // Verify old password if provided
-              if let Some(old_password) = value["old_password"].as_str() {
-                   if !verify_password(old_password, &user.password) {
-                       return Ok(ApiError::Unauthorized.into());
-                   }
-                  user.password = hash_password(new_password)?;
-              } else {
-                  return Ok(ApiError::BadRequest("Current password required".to_string()).into());
-              }
+            if new_password.is_empty() || new_password.len() < 3 {
+                return Ok(ApiError::BadRequest("Password must be 3+ characters".to_string()).into());
+            }
+            
+            let old_password = value["old_password"].as_str()
+                .ok_or_else(|| ApiError::BadRequest("Current password required".to_string()))?;
+            
+            if !verify_password(old_password, &user.password) {
+                return Ok(ApiError::Unauthorized.into());
+            }
+            
+            user.password = hash_password(new_password)?;
          }
  
          store.set_json(&user_key, &user)?;
