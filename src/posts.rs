@@ -9,6 +9,7 @@ use crate::models::models::Post;
 use crate::core::helpers::{store, now_iso, validate_uuid};
 use crate::core::errors::ApiError;
 use crate::auth::validate_token;
+use crate::config::*;
 
 pub fn create_post(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
@@ -24,7 +25,7 @@ pub fn create_post(req: Request) -> anyhow::Result<Response> {
     let id = Uuid::new_v4().to_string();
 
     // Add validation
-    if content.is_empty() || content.len() > 5000 {
+    if content.is_empty() || content.len() > MAX_POST_LENGTH {
         return Ok(ApiError::BadRequest("Invalid content".to_string()).into());
     }
 
@@ -77,7 +78,7 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
         let content = value["content"].as_str().unwrap_or_default();
 
         // Validate content
-        if content.is_empty() || content.len() > 5000 {
+        if content.is_empty() || content.len() > MAX_POST_LENGTH {
             return Ok(ApiError::BadRequest("Invalid content".to_string()).into());
         }
 
@@ -222,7 +223,7 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
         }
         
         if let Some(uid) = target_user_id {
-            for id in feed.iter().take(20) {
+            for id in feed.iter().take(POSTS_PER_PAGE) {
                 if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
                     if p.user_id == uid {
                         posts.push(p);
@@ -239,7 +240,7 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
         }
     } else {
         // Authenticated query: get posts for current user
-        for id in feed.iter().take(20) {
+        for id in feed.iter().take(POSTS_PER_PAGE) {
             if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
                 if p.user_id == user_id {
                     posts.push(p);

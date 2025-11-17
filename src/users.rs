@@ -5,6 +5,7 @@ use crate::models::models::User;
 use crate::core::helpers::{store, hash_password, verify_password, validate_uuid};
 use crate::core::errors::ApiError;
 use crate::auth::validate_token;
+use crate::config::*;
 
 
 fn sanitize_text(text: &str) -> String {
@@ -50,13 +51,13 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
      if username.is_empty() {
          return Ok(ApiError::BadRequest("Username is required".to_string()).into());
      }
-     if username.len() < 3 || username.len() > 50 {
+     if username.len() < MIN_USERNAME_LENGTH || username.len() > MAX_USERNAME_LENGTH {
          return Ok(ApiError::BadRequest("Username must be 3-50 characters".to_string()).into());
      }
      if password.is_empty() {
          return Ok(ApiError::BadRequest("Password is required".to_string()).into());
      }
-     if password.len() < 3 {
+     if password.len() < MIN_PASSWORD_LENGTH {
          return Ok(ApiError::BadRequest("Password must be at least 3 characters".to_string()).into());
      }
  
@@ -129,7 +130,7 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
  
          // Update bio if provided
          if let Some(bio) = value["bio"].as_str() {
-             if bio.len() > 500 {
+             if bio.len() > MAX_BIO_LENGTH {
                  return Ok(ApiError::BadRequest("Bio too long (max 500 chars)".to_string()).into());
              }
              // Sanitize bio at input time
@@ -142,7 +143,7 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
              if new_password.is_empty() {
                  return Ok(ApiError::BadRequest("New password cannot be empty".to_string()).into());
              }
-             if new_password.len() < 3 {
+             if new_password.len() < MIN_PASSWORD_LENGTH {
                  return Ok(ApiError::BadRequest("Password must be at least 3 characters".to_string()).into());
              }
              // Verify old password if provided
