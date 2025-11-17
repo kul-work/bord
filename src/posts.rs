@@ -3,6 +3,7 @@ use uuid::Uuid;
 use regex::Regex;
 use html_escape::encode_double_quoted_attribute;
 use ammonia::Builder;
+use std::sync::OnceLock;
 use crate::models::models::User;
 use crate::models::models::Post;
 use crate::core::helpers::{store, now_iso, unauthorized, validate_uuid};
@@ -105,6 +106,13 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
     }
 }
 
+fn url_regex() -> &'static Regex {
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    REGEX.get_or_init(|| {
+        Regex::new(r"https?://[^\s]+").expect("Regex should compile")
+    })
+}
+
 fn filter_post_content(content: &str) -> String {
     // Sanitize HTML to remove dangerous scripts and event handlers
     let clean = Builder::default()
@@ -113,8 +121,7 @@ fn filter_post_content(content: &str) -> String {
         .to_string();
     
     // Convert HTTP/HTTPS URLs into clickable links with proper escaping
-    let url_pattern = Regex::new(r"https?://[^\s]+").unwrap();
-    url_pattern.replace_all(&clean, |caps: &regex::Captures| {
+    url_regex().replace_all(&clean, |caps: &regex::Captures| {
         let url = &caps[0];
         let escaped_url = encode_double_quoted_attribute(url);
         format!(r#"<a href="{}" target="_blank">{}</a>"#, escaped_url, url)
