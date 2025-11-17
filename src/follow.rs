@@ -1,5 +1,6 @@
 use spin_sdk::http::{Request, Response};
 use spin_sdk::key_value::Store;
+use crate::models::models::User;
 use crate::core::helpers::{store, validate_uuid};
 use crate::core::errors::ApiError;
 use crate::auth::validate_token;
@@ -70,6 +71,12 @@ pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
 
     if target_user_id.is_empty() || !validate_uuid(target_user_id) || target_user_id == user_id {
         return Ok(ApiError::BadRequest("Invalid target user".to_string()).into());
+    }
+
+    // Verify target user exists
+    let target_key = format!("user:{}", target_user_id);
+    if store.get_json::<User>(&target_key)? .is_none() {
+        return Ok(ApiError::NotFound("Target user not found".to_string()).into());
     }
 
     follow_user(&store, &user_id, target_user_id)?;
