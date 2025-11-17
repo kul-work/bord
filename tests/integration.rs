@@ -195,3 +195,67 @@ async fn test_create_post_requires_auth() {
 
     assert_eq!(response.status(), 401);
 }
+
+#[tokio::test]
+async fn test_bio_xss_protection() {
+    let _lock = lock_test();
+    let client = reqwest::Client::new();
+    
+    // Create user first
+    let username = format!("bio_test_{}", uuid::Uuid::new_v4());
+    let create_body = json!({
+        "username": username,
+        "password": "test123"
+    });
+
+    let user_resp = client
+        .post(&format!("{}/users", BASE_URL))
+        .json(&create_body)
+        .send()
+        .await
+        .expect("Failed to create user");
+
+    assert_eq!(user_resp.status(), 201);
+    let user = user_resp.json::<serde_json::Value>().await.unwrap();
+    let user_id = user["id"].as_str().unwrap().to_string();
+
+    // Login
+    let login_body = json!({
+        "username": &username,
+        "password": "test123"
+    });
+
+    let login_resp = client
+        .post(&format!("{}/login", BASE_URL))
+        .json(&login_body)
+        .send()
+        .await
+        .expect("Failed to login");
+
+    assert_eq!(login_resp.status(), 200);
+    let token_data = login_resp.json::<serde_json::Value>().await.unwrap();
+    let token = token_data["token"].as_str().unwrap().to_string();
+
+    // Update profile with XSS payload in bio
+    let xss_payload = "<img src=x onerror='alert(\"xss\")'>";
+    let update_body = json!({
+        "bio": xss_payload
+    });
+
+    let update_resp = client
+        .put(&format!("{}/users/{}", BASE_URL, user_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&update_body)
+        .send()
+        .await
+        .expect("Failed to update profile");
+
+    assert_eq!(update_resp.status(), 200);
+    let updated_user = update_resp.json::<serde_json::Value>().await.unwrap();
+    let stored_bio = updated_user["bio"].as_str().unwrap_or("");
+    
+    // Bio should not contain img tags or onerror attributes
+    assert!(!stored_bio.contains("<img"));
+    assert!(!stored_bio.contains("onerror"));
+    assert!(!stored_bio.contains("alert"));
+}
