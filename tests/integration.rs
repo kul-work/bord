@@ -258,3 +258,119 @@ async fn test_bio_xss_protection() {
     assert!(!stored_bio.contains("onerror"));
     assert!(!stored_bio.contains("alert"));
 }
+
+#[tokio::test]
+async fn test_follow_unfollow_user() {
+    let _lock = lock_test();
+    let client = reqwest::Client::new();
+    
+    // Create first user
+    let username1 = format!("follow1_{}", &uuid::Uuid::new_v4().to_string()[0..8]);
+    let user1_body = json!({
+        "username": username1,
+        "password": "test"
+    });
+    
+    let user1_resp = client
+        .post(&format!("{}/users", BASE_URL))
+        .json(&user1_body)
+        .send()
+        .await
+        .expect("Failed to create user1");
+    
+    assert_eq!(user1_resp.status(), 201);
+    let user1 = user1_resp.json::<serde_json::Value>().await.unwrap();
+    let user1_id = user1["id"].as_str().unwrap().to_string();
+    
+    // Create second user
+    let username2 = format!("follow2_{}", &uuid::Uuid::new_v4().to_string()[0..8]);
+    let user2_body = json!({
+        "username": username2,
+        "password": "test"
+    });
+    
+    let user2_resp = client
+        .post(&format!("{}/users", BASE_URL))
+        .json(&user2_body)
+        .send()
+        .await
+        .expect("Failed to create user2");
+    
+    assert_eq!(user2_resp.status(), 201);
+    let user2 = user2_resp.json::<serde_json::Value>().await.unwrap();
+    let user2_id = user2["id"].as_str().unwrap().to_string();
+    
+    // Login as user1
+    let login_body = json!({
+        "username": &username1,
+        "password": "test"
+    });
+    
+    let login_resp = client
+        .post(&format!("{}/login", BASE_URL))
+        .json(&login_body)
+        .send()
+        .await
+        .expect("Failed to login");
+    
+    assert_eq!(login_resp.status(), 200);
+    let token_data = login_resp.json::<serde_json::Value>().await.unwrap();
+    let token = token_data["token"].as_str().unwrap().to_string();
+    
+    // User1 follows user2
+    let follow_body = json!({
+        "target_user_id": user2_id
+    });
+    
+    let follow_resp = client
+        .post(&format!("{}/follow", BASE_URL))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&follow_body)
+        .send()
+        .await
+        .expect("Failed to follow user");
+    
+    assert_eq!(follow_resp.status(), 200);
+    let follow_result = follow_resp.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(follow_result["status"], "followed");
+    
+    // Check user1's followings list
+    let followings_resp = client
+        .get(&format!("{}/followings/{}", BASE_URL, user1_id))
+        .send()
+        .await
+        .expect("Failed to get followings");
+    
+    assert_eq!(followings_resp.status(), 200);
+    let followings = followings_resp.json::<Vec<String>>().await.unwrap();
+    assert!(followings.contains(&user2_id), "user2_id should be in user1's followings");
+    
+    // User1 unfollows user2
+    let unfollow_body = json!({
+        "target_user_id": user2_id
+    });
+    
+    let unfollow_resp = client
+        .post(&format!("{}/unfollow", BASE_URL))
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&unfollow_body)
+        .send()
+        .await
+        .expect("Failed to unfollow user");
+    
+    assert_eq!(unfollow_resp.status(), 200);
+    let unfollow_result = unfollow_resp.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(unfollow_result["status"], "unfollowed");
+    
+    // Check user1's followings list is now empty
+    let followings_resp = client
+        .get(&format!("{}/followings/{}", BASE_URL, user1_id))
+        .send()
+        .await
+        .expect("Failed to get followings after unfollow");
+    
+    assert_eq!(followings_resp.status(), 200);
+    let followings = followings_resp.json::<Vec<String>>().await.unwrap();
+    assert!(!followings.contains(&user2_id), "user2_id should not be in user1's followings after unfollow");
+    assert!(followings.is_empty(), "user1's followings should be empty");
+}
