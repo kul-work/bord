@@ -5,10 +5,14 @@ use html_escape::encode_double_quoted_attribute;
 use ammonia::Builder;
 use crate::models::models::User;
 use crate::models::models::Post;
-use crate::core::helpers::{store, now_iso, require_auth};
+use crate::core::helpers::{store, now_iso, unauthorized};
+use crate::auth::validate_token;
 
 pub fn create_post(req: Request) -> anyhow::Result<Response> {
-    let user_id = require_auth(&req)?;
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
 
     let store = store();
     let body = req.body();
@@ -46,7 +50,10 @@ pub fn create_post(req: Request) -> anyhow::Result<Response> {
 }
 
 pub fn edit_post(req: Request) -> anyhow::Result<Response> {
-    let user_id = require_auth(&req)?;
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
 
     let path = req.path();
     let post_id = path.split('/').last().unwrap_or("");
@@ -116,7 +123,10 @@ fn filter_post_content(content: &str) -> String {
 
 
 pub fn delete_post(req: Request) -> anyhow::Result<Response> {
-     let user_id = require_auth(&req)?;
+     let user_id = match validate_token(&req) {
+         Some(uid) => uid,
+         None => return Ok(unauthorized()),
+     };
  
      let path = req.path();
      let post_id = path.split('/').last().unwrap_or("");
@@ -177,7 +187,10 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
     // If filtering by username or showing all, no auth required
     // Otherwise, require authentication for personal posts
     let user_id = if filter_username.is_none() && !show_all {
-        require_auth(&req)?
+        match validate_token(&req) {
+            Some(uid) => uid,
+            None => return Ok(unauthorized()),
+        }
     } else {
         String::new() // Not used for filtered queries
     };
@@ -235,7 +248,10 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
 }
 
 pub fn get_feed(req: Request) -> anyhow::Result<Response> {
-    let user_id = require_auth(&req)?;
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
 
     let store = store();
     

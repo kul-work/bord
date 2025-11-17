@@ -1,6 +1,7 @@
 use spin_sdk::http::{Request, Response};
 use spin_sdk::key_value::Store;
-use crate::core::helpers::{store, require_auth};
+use crate::core::helpers::{store, unauthorized};
+use crate::auth::validate_token;
 
 pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
     let followings_key = format!("followings:{}", follower_id);
@@ -56,7 +57,10 @@ pub fn get_followers(store: &Store, user_id: &str) -> anyhow::Result<Vec<String>
 // === HTTP Handlers ===
 
 pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
-    let user_id = require_auth(&req)?;
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
 
     let store = store();
     let body = req.body();
@@ -77,7 +81,10 @@ pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
 }
 
 pub fn handle_unfollow(req: Request) -> anyhow::Result<Response> {
-    let user_id = require_auth(&req)?;
+    let user_id = match validate_token(&req) {
+        Some(uid) => uid,
+        None => return Ok(unauthorized()),
+    };
 
     let store = store();
     let body = req.body();
