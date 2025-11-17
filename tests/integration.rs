@@ -216,8 +216,7 @@ async fn test_bio_xss_protection() {
         .expect("Failed to create user");
 
     assert_eq!(user_resp.status(), 201);
-    let user = user_resp.json::<serde_json::Value>().await.unwrap();
-    let user_id = user["id"].as_str().unwrap().to_string();
+    let _user = user_resp.json::<serde_json::Value>().await.unwrap();
 
     // Login
     let login_body = json!({
@@ -243,7 +242,7 @@ async fn test_bio_xss_protection() {
     });
 
     let update_resp = client
-        .put(&format!("{}/users/{}", BASE_URL, user_id))
+        .put(&format!("{}/profile", BASE_URL))
         .header("Authorization", format!("Bearer {}", token))
         .json(&update_body)
         .send()
