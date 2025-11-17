@@ -50,8 +50,14 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
      if username.is_empty() {
          return Ok(ApiError::BadRequest("Username is required".to_string()).into());
      }
+     if username.len() < 3 || username.len() > 50 {
+         return Ok(ApiError::BadRequest("Username must be 3-50 characters".to_string()).into());
+     }
      if password.is_empty() {
          return Ok(ApiError::BadRequest("Password is required".to_string()).into());
+     }
+     if password.len() < 3 {
+         return Ok(ApiError::BadRequest("Password must be at least 3 characters".to_string()).into());
      }
  
      // Sanitize username at input time
@@ -135,6 +141,9 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
          if let Some(new_password) = value["new_password"].as_str() {
              if new_password.is_empty() {
                  return Ok(ApiError::BadRequest("New password cannot be empty".to_string()).into());
+             }
+             if new_password.len() < 3 {
+                 return Ok(ApiError::BadRequest("Password must be at least 3 characters".to_string()).into());
              }
              // Verify old password if provided
               if let Some(old_password) = value["old_password"].as_str() {

@@ -14,7 +14,7 @@ async fn test_full_user_flow() {
     let client = reqwest::Client::new();
     
     // 1. Create user
-    let username = format!("flow_test_{}", uuid::Uuid::new_v4());
+    let username = format!("flow_{}", &uuid::Uuid::new_v4().to_string()[0..8]);
     let create_body = json!({
         "username": username,
         "password": "test"
@@ -94,7 +94,7 @@ async fn test_post_content_validation() {
     let client = reqwest::Client::new();
     
     // Create and login a user
-    let username = format!("validation_test_{}", uuid::Uuid::new_v4());
+    let username = format!("val_{}", &uuid::Uuid::new_v4().to_string()[0..8]);
     let create_body = json!({
         "username": username,
         "password": "test"
@@ -202,7 +202,7 @@ async fn test_bio_xss_protection() {
     let client = reqwest::Client::new();
     
     // Create user first
-    let username = format!("bio_test_{}", uuid::Uuid::new_v4());
+    let username = format!("bio_{}", &uuid::Uuid::new_v4().to_string()[0..8]);
     let create_body = json!({
         "username": username,
         "password": "test123"
