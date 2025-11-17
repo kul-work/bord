@@ -46,7 +46,7 @@ pub fn logout_user(req: Request) -> anyhow::Result<Response> {
         return Ok(unauthorized());
     }
     
-    let token = &auth_header[7..];
+    let token = auth_header.strip_prefix("Bearer ").unwrap();
     let key = format!("token:{}", token);
     store.delete(&key)?;
     
@@ -66,7 +66,7 @@ pub fn validate_token(req: &Request) -> Option<String> {
     if !auth_header.starts_with("Bearer ") {
         return None;
     }
-    let token = &auth_header[7..];
+    let token = auth_header.strip_prefix("Bearer ").unwrap();
     let key = format!("token:{}", token);
     if let Some(data) = store.get_json::<TokenData>(&key).ok()? {
         // Check if token is expired
