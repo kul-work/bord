@@ -2,7 +2,8 @@ use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
 use ammonia::Builder;
 use crate::models::models::User;
-use crate::core::helpers::{store, hash_password, verify_password, unauthorized, validate_uuid};
+use crate::core::helpers::{store, hash_password, verify_password, validate_uuid};
+use crate::core::errors::ApiError;
 use crate::auth::validate_token;
 
 
@@ -47,10 +48,10 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
      let password = new_user["password"].as_str().unwrap_or("");
  
      if username.is_empty() {
-         return Ok(Response::builder().status(400).body("Username is required").build());
+         return Ok(ApiError::BadRequest("Username is required".to_string()).into());
      }
      if password.is_empty() {
-         return Ok(Response::builder().status(400).body("Password is required").build());
+         return Ok(ApiError::BadRequest("Password is required".to_string()).into());
      }
  
      // Sanitize username at input time
@@ -61,7 +62,7 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
      for id in &existing_users {
          if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
              if u.username == sanitized_username {
-                 return Ok(Response::builder().status(409).body("Username exists").build());
+                 return Ok(ApiError::Conflict("Username exists".to_string()).into());
              }
          }
      }
@@ -92,7 +93,7 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
 pub fn get_profile(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
-        None => return Ok(unauthorized()),
+        None => return Ok(ApiError::Unauthorized.into()),
     };
 
     get_user_by_id(&user_id)
@@ -102,7 +103,7 @@ pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
     let user_id = path.trim_start_matches("/users/");
     
     if user_id.is_empty() || !validate_uuid(user_id) {
-        return Ok(Response::builder().status(400).body("User ID required").build());
+        return Ok(ApiError::BadRequest("User ID required".to_string()).into());
     }
 
     get_user_by_id(user_id)
@@ -111,7 +112,7 @@ pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
 pub fn update_profile(req: Request) -> anyhow::Result<Response> {
      let user_id = match validate_token(&req) {
          Some(uid) => uid,
-         None => return Ok(unauthorized()),
+         None => return Ok(ApiError::Unauthorized.into()),
      };
  
      let store = store();
@@ -123,37 +124,37 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
          // Update bio if provided
          if let Some(bio) = value["bio"].as_str() {
              if bio.len() > 500 {
-                 return Ok(Response::builder().status(400).body("Bio too long (max 500 chars)").build());
+                 return Ok(ApiError::BadRequest("Bio too long (max 500 chars)".to_string()).into());
              }
              // Sanitize bio at input time
              let sanitized_bio = sanitize_text(bio);
              user.bio = if sanitized_bio.is_empty() { None } else { Some(sanitized_bio) };
          }
-
-        // Update password if provided
-        if let Some(new_password) = value["new_password"].as_str() {
-            if new_password.is_empty() {
-                return Ok(Response::builder().status(400).body("New password cannot be empty").build());
-            }
-            // Verify old password if provided
-             if let Some(old_password) = value["old_password"].as_str() {
-                 if !verify_password(old_password, &user.password) {
-                     return Ok(Response::builder().status(401).body("Invalid current password").build());
-                 }
-                user.password = hash_password(new_password);
-            } else {
-                return Ok(Response::builder().status(400).body("Current password required").build());
-            }
-        }
-
-        store.set_json(&user_key, &user)?;
-
-        Ok(Response::builder()
-            .status(200)
-            .header("Content-Type", "application/json")
-            .body(serde_json::to_vec(&build_user_json(&user))?)
-            .build())
-    } else {
-        Ok(Response::builder().status(404).body("User not found").build())
-    }
+ 
+         // Update password if provided
+         if let Some(new_password) = value["new_password"].as_str() {
+             if new_password.is_empty() {
+                 return Ok(ApiError::BadRequest("New password cannot be empty".to_string()).into());
+             }
+             // Verify old password if provided
+              if let Some(old_password) = value["old_password"].as_str() {
+                  if !verify_password(old_password, &user.password) {
+                      return Ok(ApiError::Unauthorized.into());
+                  }
+                 user.password = hash_password(new_password);
+             } else {
+                 return Ok(ApiError::BadRequest("Current password required".to_string()).into());
+             }
+         }
+ 
+         store.set_json(&user_key, &user)?;
+ 
+         Ok(Response::builder()
+             .status(200)
+             .header("Content-Type", "application/json")
+             .body(serde_json::to_vec(&build_user_json(&user))?)
+             .build())
+     } else {
+         Ok(ApiError::NotFound("User not found".to_string()).into())
+     }
 }

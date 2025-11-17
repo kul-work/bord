@@ -6,13 +6,14 @@ use ammonia::Builder;
 use std::sync::OnceLock;
 use crate::models::models::User;
 use crate::models::models::Post;
-use crate::core::helpers::{store, now_iso, unauthorized, validate_uuid};
+use crate::core::helpers::{store, now_iso, validate_uuid};
+use crate::core::errors::ApiError;
 use crate::auth::validate_token;
 
 pub fn create_post(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
-        None => return Ok(unauthorized()),
+        None => return Ok(ApiError::Unauthorized.into()),
     };
 
     let store = store();
@@ -22,6 +23,11 @@ pub fn create_post(req: Request) -> anyhow::Result<Response> {
     let content = value["content"].as_str().unwrap_or_default();
     let id = Uuid::new_v4().to_string();
 
+    // Add validation
+    if content.is_empty() || content.len() > 5000 {
+        return Ok(ApiError::BadRequest("Invalid content".to_string()).into());
+    }
+
     let post = Post {
         id: id.clone(),
         user_id: user_id.to_string(),
@@ -29,11 +35,6 @@ pub fn create_post(req: Request) -> anyhow::Result<Response> {
         created_at: now_iso(),
         updated_at: None,
     };
-
-    // Add validation
-    if content.is_empty() || content.len() > 5000 {
-        return Ok(Response::builder().status(400).body("Invalid content").build());
-    }
 
     // Save post object
     store.set_json(&format!("post:{}", id), &post)?;
@@ -53,14 +54,14 @@ pub fn create_post(req: Request) -> anyhow::Result<Response> {
 pub fn edit_post(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
-        None => return Ok(unauthorized()),
+        None => return Ok(ApiError::Unauthorized.into()),
     };
 
     let path = req.path();
     let post_id = path.split('/').last().unwrap_or("");
 
     if post_id.is_empty() || !validate_uuid(post_id) {
-        return Ok(Response::builder().status(400).body("Post ID required").build());
+        return Ok(ApiError::BadRequest("Post ID required".to_string()).into());
     }
 
     let store = store();
@@ -69,7 +70,7 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
     // Check if post exists and belongs to user
     if let Some(mut post) = store.get_json::<Post>(&post_key)? {
         if post.user_id != user_id {
-            return Ok(Response::builder().status(403).body("Forbidden").build());
+            return Ok(ApiError::Forbidden.into());
         }
 
         let value: serde_json::Value = serde_json::from_slice(req.body())?;
@@ -77,7 +78,7 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
 
         // Validate content
         if content.is_empty() || content.len() > 5000 {
-            return Ok(Response::builder().status(400).body("Invalid content").build());
+            return Ok(ApiError::BadRequest("Invalid content".to_string()).into());
         }
 
         // Skip update if content didn't change
@@ -102,7 +103,7 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
             .body(serde_json::to_vec(&post)?)
             .build())
     } else {
-        Ok(Response::builder().status(404).body("Post not found").build())
+        Ok(ApiError::NotFound("Post not found".to_string()).into())
     }
 }
 
@@ -132,14 +133,14 @@ fn filter_post_content(content: &str) -> String {
 pub fn delete_post(req: Request) -> anyhow::Result<Response> {
      let user_id = match validate_token(&req) {
          Some(uid) => uid,
-         None => return Ok(unauthorized()),
+         None => return Ok(ApiError::Unauthorized.into()),
      };
  
      let path = req.path();
      let post_id = path.split('/').last().unwrap_or("");
      
      if post_id.is_empty() || !validate_uuid(post_id) {
-         return Ok(Response::builder().status(400).body("Post ID required").build());
+         return Ok(ApiError::BadRequest("Post ID required".to_string()).into());
      }
  
      let store = store();
@@ -148,7 +149,7 @@ pub fn delete_post(req: Request) -> anyhow::Result<Response> {
      // Check if post exists and belongs to user
      if let Some(p) = store.get_json::<Post>(&post_key)? {
          if p.user_id != user_id {
-             return Ok(Response::builder().status(403).body("Forbidden").build());
+             return Ok(ApiError::Forbidden.into());
          }
  
          // Delete the post
@@ -161,7 +162,7 @@ pub fn delete_post(req: Request) -> anyhow::Result<Response> {
  
          Ok(Response::builder().status(204).body("").build())
      } else {
-         Ok(Response::builder().status(404).body("Post not found").build())
+         Ok(ApiError::NotFound("Post not found".to_string()).into())
      }
 }
 
@@ -196,7 +197,7 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
     let user_id = if filter_username.is_none() && !show_all {
         match validate_token(&req) {
             Some(uid) => uid,
-            None => return Ok(unauthorized()),
+            None => return Ok(ApiError::Unauthorized.into()),
         }
     } else {
         String::new() // Not used for filtered queries
@@ -257,7 +258,7 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
 pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
-        None => return Ok(unauthorized()),
+        None => return Ok(ApiError::Unauthorized.into()),
     };
 
     let store = store();

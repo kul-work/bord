@@ -1,6 +1,7 @@
 use spin_sdk::http::{Request, Response};
 use spin_sdk::key_value::Store;
-use crate::core::helpers::{store, unauthorized, validate_uuid};
+use crate::core::helpers::{store, validate_uuid};
+use crate::core::errors::ApiError;
 use crate::auth::validate_token;
 
 pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
@@ -59,7 +60,7 @@ pub fn get_followers(store: &Store, user_id: &str) -> anyhow::Result<Vec<String>
 pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
-        None => return Ok(unauthorized()),
+        None => return Ok(ApiError::Unauthorized.into()),
     };
 
     let store = store();
@@ -68,7 +69,7 @@ pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
     let target_user_id = value["target_user_id"].as_str().unwrap_or_default();
 
     if target_user_id.is_empty() || !validate_uuid(target_user_id) || target_user_id == user_id {
-        return Ok(Response::builder().status(400).body("Invalid target user").build());
+        return Ok(ApiError::BadRequest("Invalid target user".to_string()).into());
     }
 
     follow_user(&store, &user_id, target_user_id)?;
@@ -83,7 +84,7 @@ pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
 pub fn handle_unfollow(req: Request) -> anyhow::Result<Response> {
     let user_id = match validate_token(&req) {
         Some(uid) => uid,
-        None => return Ok(unauthorized()),
+        None => return Ok(ApiError::Unauthorized.into()),
     };
 
     let store = store();
@@ -92,7 +93,7 @@ pub fn handle_unfollow(req: Request) -> anyhow::Result<Response> {
     let target_user_id = value["target_user_id"].as_str().unwrap_or_default();
 
     if target_user_id.is_empty() || !validate_uuid(target_user_id) {
-        return Ok(Response::builder().status(400).body("Invalid target user").build());
+        return Ok(ApiError::BadRequest("Invalid target user".to_string()).into());
     }
 
     unfollow_user(&store, &user_id, target_user_id)?;
@@ -108,48 +109,32 @@ pub fn get_followings_list(path: &str) -> anyhow::Result<Response> {
     let user_id = path.trim_start_matches("/followings/");
     
     if user_id.is_empty() || !validate_uuid(user_id) {
-        return Ok(Response::builder().status(400).body("User ID required").build());
+        return Ok(ApiError::BadRequest("User ID required".to_string()).into());
     }
 
     let store = store();
-    match get_followings(&store, user_id) {
-        Ok(followings) => {
-            Ok(Response::builder()
-                .status(200)
-                .header("Content-Type", "application/json")
-                .body(serde_json::to_vec(&followings)?)
-                .build())
-        }
-        Err(_) => {
-            Ok(Response::builder()
-                .status(500)
-                .body("Error retrieving followings")
-                .build())
-        }
-    }
+    let followings = get_followings(&store, user_id)?;
+    
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&followings)?)
+        .build())
 }
 
 pub fn get_followers_list(path: &str) -> anyhow::Result<Response> {
     let user_id = path.trim_start_matches("/followers/");
     
     if user_id.is_empty() || !validate_uuid(user_id) {
-        return Ok(Response::builder().status(400).body("User ID required").build());
+        return Ok(ApiError::BadRequest("User ID required".to_string()).into());
     }
 
     let store = store();
-    match get_followers(&store, user_id) {
-        Ok(followers) => {
-            Ok(Response::builder()
-                .status(200)
-                .header("Content-Type", "application/json")
-                .body(serde_json::to_vec(&followers)?)
-                .build())
-        }
-        Err(_) => {
-            Ok(Response::builder()
-                .status(500)
-                .body("Error retrieving followers")
-                .build())
-        }
-    }
+    let followers = get_followers(&store, user_id)?;
+    
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&followers)?)
+        .build())
 }
