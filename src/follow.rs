@@ -1,6 +1,6 @@
 use spin_sdk::http::{Request, Response};
 use spin_sdk::key_value::Store;
-use crate::core::helpers::{store, unauthorized};
+use crate::core::helpers::{store, unauthorized, validate_uuid};
 use crate::auth::validate_token;
 
 pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
@@ -67,7 +67,7 @@ pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
     let value: serde_json::Value = serde_json::from_slice(body)?;
     let target_user_id = value["target_user_id"].as_str().unwrap_or_default();
 
-    if target_user_id.is_empty() || target_user_id == user_id {
+    if target_user_id.is_empty() || !validate_uuid(target_user_id) || target_user_id == user_id {
         return Ok(Response::builder().status(400).body("Invalid target user").build());
     }
 
@@ -91,7 +91,7 @@ pub fn handle_unfollow(req: Request) -> anyhow::Result<Response> {
     let value: serde_json::Value = serde_json::from_slice(body)?;
     let target_user_id = value["target_user_id"].as_str().unwrap_or_default();
 
-    if target_user_id.is_empty() {
+    if target_user_id.is_empty() || !validate_uuid(target_user_id) {
         return Ok(Response::builder().status(400).body("Invalid target user").build());
     }
 
@@ -107,7 +107,7 @@ pub fn handle_unfollow(req: Request) -> anyhow::Result<Response> {
 pub fn get_followings_list(path: &str) -> anyhow::Result<Response> {
     let user_id = path.trim_start_matches("/followings/");
     
-    if user_id.is_empty() {
+    if user_id.is_empty() || !validate_uuid(user_id) {
         return Ok(Response::builder().status(400).body("User ID required").build());
     }
 
@@ -132,7 +132,7 @@ pub fn get_followings_list(path: &str) -> anyhow::Result<Response> {
 pub fn get_followers_list(path: &str) -> anyhow::Result<Response> {
     let user_id = path.trim_start_matches("/followers/");
     
-    if user_id.is_empty() {
+    if user_id.is_empty() || !validate_uuid(user_id) {
         return Ok(Response::builder().status(400).body("User ID required").build());
     }
 

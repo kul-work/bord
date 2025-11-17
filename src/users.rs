@@ -2,7 +2,7 @@ use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
 use ammonia::Builder;
 use crate::models::models::User;
-use crate::core::helpers::{store, hash_password, verify_password, unauthorized};
+use crate::core::helpers::{store, hash_password, verify_password, unauthorized, validate_uuid};
 use crate::auth::validate_token;
 
 
@@ -101,7 +101,7 @@ pub fn get_profile(req: Request) -> anyhow::Result<Response> {
 pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
     let user_id = path.trim_start_matches("/users/");
     
-    if user_id.is_empty() {
+    if user_id.is_empty() || !validate_uuid(user_id) {
         return Ok(Response::builder().status(400).body("User ID required").build());
     }
 
