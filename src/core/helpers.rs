@@ -17,14 +17,14 @@ pub fn unauthorized() -> Response {
     Response::builder().status(401).body("Unauthorized").build()
 }
 
-pub fn hash_password(password: &str) -> String {
+pub fn hash_password(password: &str) -> anyhow::Result<String> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     
     argon2
         .hash_password(password.as_bytes(), &salt)
-        .expect("Failed to hash password")
-        .to_string()
+        .map(|hash| hash.to_string())
+        .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))
 }
 
 pub fn verify_password(password: &str, hash: &str) -> bool {

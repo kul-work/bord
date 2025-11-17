@@ -41,7 +41,7 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
         let user = User {
             id: user_id.clone(),
             username: "test".to_string(),
-            password: hash_password("test"),
+            password: hash_password("test")?,
             bio: Some("Test user bio".to_string()),
         };
         
@@ -68,7 +68,7 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
         let user = User {
             id: user_id.clone(),
             username: "alice".to_string(),
-            password: hash_password("alice"),
+            password: hash_password("alice")?,
             bio: Some("Hello, I'm Alice!".to_string()),
         };
         
@@ -108,7 +108,7 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
         let user = User {
             id: user_id.clone(),
             username: "bob".to_string(),
-            password: hash_password("bob"),
+            password: hash_password("bob")?,
             bio: Some("Bob's corner of the internet".to_string()),
         };
         

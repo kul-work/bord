@@ -77,7 +77,7 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
      let user = User {
          id: id.clone(),
          username: sanitized_username,
-         password: hash_password(password),
+         password: hash_password(password)?,
          bio: None,
      };
  
@@ -147,13 +147,13 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
              }
              // Verify old password if provided
               if let Some(old_password) = value["old_password"].as_str() {
-                  if !verify_password(old_password, &user.password) {
-                      return Ok(ApiError::Unauthorized.into());
-                  }
-                 user.password = hash_password(new_password);
-             } else {
-                 return Ok(ApiError::BadRequest("Current password required".to_string()).into());
-             }
+                   if !verify_password(old_password, &user.password) {
+                       return Ok(ApiError::Unauthorized.into());
+                   }
+                  user.password = hash_password(new_password)?;
+              } else {
+                  return Ok(ApiError::BadRequest("Current password required".to_string()).into());
+              }
          }
  
          store.set_json(&user_key, &user)?;
