@@ -153,14 +153,14 @@ pub fn delete_post(req: Request) -> anyhow::Result<Response> {
          }
  
          // Delete the post
-         store.delete(&post_key)?;
- 
-         // Remove from feed
-         let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
-         feed.retain(|id| id != post_id);
-         store.set_json("feed", &feed)?;
- 
-         Ok(Response::builder().status(204).body("").build())
+             store.delete(&post_key)?;
+         
+             // Remove from feed
+             let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+             feed.retain(|id| id != post_id);
+             store.set_json("feed", &feed)?;
+         
+             Ok(Response::builder().status(204).build())
      } else {
          Ok(ApiError::NotFound("Post not found".to_string()).into())
      }

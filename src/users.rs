@@ -25,18 +25,18 @@ fn build_user_json(user: &User) -> serde_json::Value {
 }
 
 fn get_user_by_id(user_id: &str) -> anyhow::Result<Response> {
-    let store = store();
-    let user_key = format!("user:{}", user_id);
-    
-    if let Some(user) = store.get_json::<User>(&user_key)? {
-        Ok(Response::builder()
-            .status(200)
-            .header("Content-Type", "application/json")
-            .body(serde_json::to_vec(&build_user_json(&user))?)
-            .build())
-    } else {
-        Ok(Response::builder().status(404).body("User not found").build())
-    }
+     let store = store();
+     let user_key = format!("user:{}", user_id);
+     
+     if let Some(user) = store.get_json::<User>(&user_key)? {
+         Ok(Response::builder()
+             .status(200)
+             .header("Content-Type", "application/json")
+             .body(serde_json::to_vec(&build_user_json(&user))?)
+             .build())
+     } else {
+        Ok(ApiError::NotFound("User not found".to_string()).into())
+     }
 }
 
 pub fn create_user(req: Request) -> anyhow::Result<Response> {

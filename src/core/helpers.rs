@@ -4,6 +4,7 @@ use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::SaltString;
 use rand::rngs::OsRng;
 use uuid::Uuid;
+use crate::core::errors::ApiError;
 
 pub fn store() -> Store {
     Store::open_default().expect("KV store must exist")
@@ -14,7 +15,7 @@ pub fn now_iso() -> String {
 }
 
 pub fn unauthorized() -> Response {
-    Response::builder().status(401).body("Unauthorized").build()
+    ApiError::Unauthorized.into()
 }
 
 pub fn hash_password(password: &str) -> anyhow::Result<String> {

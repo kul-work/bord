@@ -15,6 +15,7 @@ mod follow;
 use core::db;
 use core::helpers;
 use core::static_server;
+use core::errors::ApiError;
 
 
 pub use db::init_test_data;
@@ -45,6 +46,6 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", p) if p.starts_with("/users/") && p.len() > 7 => users::get_user_details(p),
         ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => templates::render_user_profile(&req, p),
         ("GET", p) => static_server::serve_static(p),
-        _ => Ok(spin_sdk::http::Response::builder().status(404).body("Not found").build()),
+        _ => Ok(ApiError::NotFound("Not found".to_string()).into()),
     }
 }

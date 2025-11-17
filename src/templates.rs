@@ -2,6 +2,7 @@ use spin_sdk::http::{Request, Response};
 use rust_embed::RustEmbed;
 use crate::models::models::User;
 use crate::core::helpers::store;
+use crate::core::errors::ApiError;
 
 #[derive(RustEmbed)]
 #[folder = "static"]
@@ -25,7 +26,7 @@ pub fn render_user_profile(_req: &Request, path: &str) -> anyhow::Result<Respons
     }
     
     if target_user.is_none() {
-        return Ok(Response::builder().status(404).body("User not found").build());
+        return Ok(ApiError::NotFound("User not found".to_string()).into());
     }
     
     let user = target_user.unwrap();
