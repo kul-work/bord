@@ -3,6 +3,7 @@ use spin_sdk::key_value::Store;
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::SaltString;
 use rand::rngs::OsRng;
+use uuid::Uuid;
 
 pub fn store() -> Store {
     Store::open_default().expect("KV store must exist")
@@ -37,4 +38,8 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok()
+}
+
+pub fn validate_uuid(id: &str) -> bool {
+    Uuid::parse_str(id).is_ok()
 }

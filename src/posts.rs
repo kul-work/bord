@@ -5,7 +5,7 @@ use html_escape::encode_double_quoted_attribute;
 use ammonia::Builder;
 use crate::models::models::User;
 use crate::models::models::Post;
-use crate::core::helpers::{store, now_iso, unauthorized};
+use crate::core::helpers::{store, now_iso, unauthorized, validate_uuid};
 use crate::auth::validate_token;
 
 pub fn create_post(req: Request) -> anyhow::Result<Response> {
@@ -58,7 +58,7 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
     let path = req.path();
     let post_id = path.split('/').last().unwrap_or("");
 
-    if post_id.is_empty() {
+    if post_id.is_empty() || !validate_uuid(post_id) {
         return Ok(Response::builder().status(400).body("Post ID required").build());
     }
 
@@ -130,8 +130,8 @@ pub fn delete_post(req: Request) -> anyhow::Result<Response> {
  
      let path = req.path();
      let post_id = path.split('/').last().unwrap_or("");
- 
-     if post_id.is_empty() {
+     
+     if post_id.is_empty() || !validate_uuid(post_id) {
          return Ok(Response::builder().status(400).body("Post ID required").build());
      }
  
