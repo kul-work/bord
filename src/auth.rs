@@ -38,6 +38,28 @@ pub fn login_user(req: Request) -> anyhow::Result<Response> {
     Ok(unauthorized())
 }
 
+pub fn logout_user(req: Request) -> anyhow::Result<Response> {
+    let store = store();
+    let auth_header = req.header("Authorization").and_then(|h| h.as_str()).unwrap_or_default();
+    
+    if !auth_header.starts_with("Bearer ") {
+        return Ok(unauthorized());
+    }
+    
+    let token = &auth_header[7..];
+    let key = format!("token:{}", token);
+    store.delete(&key)?;
+    
+    let resp = serde_json::json!({
+        "message": "Logged out successfully"
+    });
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&resp)?)
+        .build())
+}
+
 pub fn validate_token(req: &Request) -> Option<String> {
     let store = store();
     let auth_header = req.header("Authorization")?.as_str().unwrap_or_default();

@@ -508,7 +508,12 @@
             }
         }
 
-        function logout() {
+        async function logout() {
+            const res = await apiCall('/logout', {
+                method: 'POST',
+                token
+            });
+            
             token = null;
             currentUsername = null;
             currentUserId = null;

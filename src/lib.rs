@@ -30,6 +30,7 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
     match (method.to_string().as_str(), path) {
         ("POST", "/users") => users::create_user(req),
         ("POST", "/login") => auth::login_user(req),
+        ("POST", "/logout") => auth::logout_user(req),
         ("GET", "/profile") => users::get_profile(req),
         ("PUT", "/profile") => users::update_profile(req),
         ("POST", "/posts") => posts::create_post(req),
