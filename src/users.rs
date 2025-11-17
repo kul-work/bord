@@ -2,8 +2,7 @@ use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
 use ammonia::Builder;
 use crate::models::models::User;
-use crate::core::helpers::{store, hash_password, verify_password, unauthorized};
-use crate::auth::validate_token;
+use crate::core::helpers::{store, hash_password, verify_password, require_auth};
 
 
 fn sanitize_text(text: &str) -> String {
@@ -90,10 +89,7 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
  }
 
 pub fn get_profile(req: Request) -> anyhow::Result<Response> {
-    let user_id = match validate_token(&req) {
-        Some(uid) => uid,
-        None => return Ok(unauthorized()),
-    };
+    let user_id = require_auth(&req)?;
 
     get_user_by_id(&user_id)
 }
@@ -109,10 +105,7 @@ pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
 }
 
 pub fn update_profile(req: Request) -> anyhow::Result<Response> {
-     let user_id = match validate_token(&req) {
-         Some(uid) => uid,
-         None => return Ok(unauthorized()),
-     };
+     let user_id = require_auth(&req)?;
  
      let store = store();
      let user_key = format!("user:{}", user_id);

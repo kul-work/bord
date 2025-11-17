@@ -1,8 +1,9 @@
-use spin_sdk::http::Response;
+use spin_sdk::http::{Request, Response};
 use spin_sdk::key_value::Store;
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::SaltString;
 use rand::rngs::OsRng;
+use crate::auth::validate_token;
 
 pub fn store() -> Store {
     Store::open_default().expect("KV store must exist")
@@ -37,4 +38,8 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok()
+}
+
+pub fn require_auth(req: &Request) -> anyhow::Result<String> {
+    validate_token(req).ok_or_else(|| anyhow::anyhow!("Unauthorized"))
 }
