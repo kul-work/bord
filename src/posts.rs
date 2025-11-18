@@ -131,6 +131,80 @@ fn filter_post_content(content: &str) -> String {
     }).to_string()
 }
 
+/// Fetch all posts from the global feed
+fn get_all_posts_from_feed() -> anyhow::Result<Vec<Post>> {
+    let store = store();
+    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let mut posts = Vec::new();
+    
+    for id in feed.iter() {
+        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+            posts.push(p);
+        }
+    }
+    
+    Ok(posts)
+}
+
+/// Filter posts by a single user_id
+fn filter_posts_by_user(user_id: &str) -> anyhow::Result<Vec<Post>> {
+    let store = store();
+    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let mut posts = Vec::new();
+    
+    for id in feed.iter() {
+        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+            if p.user_id == user_id {
+                posts.push(p);
+            }
+        }
+    }
+    
+    Ok(posts)
+}
+
+/// Filter posts from multiple user_ids (e.g., followings)
+fn filter_posts_by_users(user_ids: &[String]) -> anyhow::Result<Vec<Post>> {
+    let store = store();
+    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let mut posts = Vec::new();
+    
+    for id in feed.iter() {
+        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+            if user_ids.contains(&p.user_id) {
+                posts.push(p);
+            }
+        }
+    }
+    
+    Ok(posts)
+}
+
+/// Look up a user by username
+fn get_user_by_username(username: &str) -> anyhow::Result<Option<String>> {
+    let store = store();
+    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    
+    for id in users {
+        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+            if u.username == username {
+                return Ok(Some(u.id));
+            }
+        }
+    }
+    
+    Ok(None)
+}
+
+/// Apply pagination to a list of posts
+fn paginate_posts(posts: Vec<Post>, page: usize) -> Vec<Post> {
+    let start_idx = (page - 1) * POSTS_PER_PAGE;
+    posts.into_iter()
+        .skip(start_idx)
+        .take(POSTS_PER_PAGE)
+        .collect()
+}
+
 
 pub fn delete_post(req: Request) -> anyhow::Result<Response> {
      let user_id = match validate_token(&req) {
@@ -169,7 +243,6 @@ pub fn delete_post(req: Request) -> anyhow::Result<Response> {
 }
 
 pub fn list_posts(req: Request) -> anyhow::Result<Response> {
-    let store = store();
     let uri = req.uri();
     
     // Parse query parameters
@@ -189,57 +262,23 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
         String::new() // Not used for filtered queries
     };
 
-    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
-    let start_idx = (page - 1) * POSTS_PER_PAGE;
-
-    let mut posts = Vec::new();
-    
-    if let Some(username) = filter_username {
+    let posts = if let Some(username) = filter_username {
         // Public query: get posts for specific username
-        let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
-        let mut target_user_id: Option<String> = None;
-        
-        for id in users {
-            if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
-                if u.username == username {
-                    target_user_id = Some(u.id);
-                    break;
-                }
-            }
-        }
-        
-        if let Some(uid) = target_user_id {
-            let mut user_posts = Vec::new();
-            for id in feed.iter() {
-                if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
-                    if p.user_id == uid {
-                        user_posts.push(p);
-                    }
-                }
-            }
-            posts = user_posts.into_iter().skip(start_idx).take(POSTS_PER_PAGE).collect();
+        if let Some(uid) = get_user_by_username(&username)? {
+            let user_posts = filter_posts_by_user(&uid)?;
+            paginate_posts(user_posts, page)
+        } else {
+            Vec::new()
         }
     } else if show_all {
-        // Get paginated posts from the global feed, sorted by creation date
-        let mut all_posts = Vec::new();
-        for id in feed.iter() {
-            if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
-                all_posts.push(p);
-            }
-        }
-        posts = all_posts.into_iter().skip(start_idx).take(POSTS_PER_PAGE).collect();
+        // Get paginated posts from the global feed
+        let all_posts = get_all_posts_from_feed()?;
+        paginate_posts(all_posts, page)
     } else {
         // Authenticated query: get paginated posts for current user
-        let mut user_posts = Vec::new();
-        for id in feed.iter() {
-            if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
-                if p.user_id == user_id {
-                    user_posts.push(p);
-                }
-            }
-        }
-        posts = user_posts.into_iter().skip(start_idx).take(POSTS_PER_PAGE).collect();
-    }
+        let user_posts = filter_posts_by_user(&user_id)?;
+        paginate_posts(user_posts, page)
+    };
 
     Ok(Response::builder()
         .status(200)
@@ -265,31 +304,14 @@ pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     let followings: Vec<String> = store.get_json(&format!("followings:{}", user_id))?
         .unwrap_or_default();
     
-    // Get all posts from feed
-    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
-    
-    let mut posts: Vec<Post> = Vec::new();
-    
-    // Collect posts from user and their followings
-    for post_id in feed.iter() {
-        if let Some(p) = store.get_json::<Post>(&format!("post:{}", post_id))? {
-            // Include if post is from someone they follow
-            if followings.contains(&p.user_id) {
-                posts.push(p);
-            }
-        }
-    }
+    // Get posts from users they follow
+    let mut posts = filter_posts_by_users(&followings)?;
     
     // Sort by created_at in descending order (newest first)
     posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     
     // Apply pagination
-    let start_idx = (page - 1) * POSTS_PER_PAGE;
-    let paginated_posts: Vec<Post> = posts
-        .into_iter()
-        .skip(start_idx)
-        .take(POSTS_PER_PAGE)
-        .collect();
+    let paginated_posts = paginate_posts(posts, page);
     
     Ok(Response::builder()
         .status(200)
