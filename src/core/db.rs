@@ -133,4 +133,38 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
     store.set_json("feed", &feed)?;
     
     Ok(())
+}
+
+pub fn reset_db_data(store: &Store) -> anyhow::Result<()> {
+    // Clear all data
+    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    
+    // Delete all users
+    for id in &users {
+        store.delete(&format!("user:{}", id))?;
     }
+    
+    // Delete all posts
+    let posts: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    for id in posts {
+        store.delete(&format!("post:{}", id))?;
+    }
+
+    // Delete all followings (iterate through all users to find followings keys)
+    for user_id in &users {
+        store.delete(&format!("followings:{}", user_id))?;
+    }
+
+    // Delete all tokens - need to track them, so check tokens_list if it exists
+    let tokens: Vec<String> = store.get_json("tokens_list")?.unwrap_or_default();
+    for token in tokens {
+        store.delete(&format!("token:{}", token))?;
+    }
+    
+    // Delete metadata
+    store.delete("users_list")?;
+    store.delete("feed")?;
+    store.delete("tokens_list")?;
+
+    Ok(())
+}

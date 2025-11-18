@@ -18,7 +18,7 @@ use core::static_server;
 use core::errors::ApiError;
 
 
-pub use db::init_test_data;
+pub use db::{init_test_data, reset_db_data};
 
 // === Component entrypoint ===
 #[http_component]
@@ -29,6 +29,15 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
     let method = req.method();
 
     match (method.to_string().as_str(), path) {
+        #[cfg(feature = "perf")]
+        ("POST", "/dev/ok") => {
+            Ok(spin_sdk::http::Response::builder().status(200).body(b"ok".to_vec()).build())
+        },
+        #[cfg(feature = "perf")]
+        ("POST", "/dev/reset") => {
+            db::reset_db_data(&helpers::store())?;
+            Ok(spin_sdk::http::Response::builder().status(200).body(b"DB reseted.".to_vec()).build())
+        },
         ("POST", "/users") => users::create_user(req),
         ("POST", "/login") => auth::login_user(req),
         ("POST", "/logout") => auth::logout_user(req),
@@ -46,6 +55,6 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         ("GET", p) if p.starts_with("/users/") && p.len() > 7 => users::get_user_details(p),
         ("GET", p) if !p.contains('.') && p.len() > 1 && p != "/" => templates::render_user_profile(&req, p),
         ("GET", p) => static_server::serve_static(p),
-        _ => Ok(ApiError::NotFound("Not found".to_string()).into()),
+        _ => Ok(ApiError::NotFound("No route found".to_string()).into()),
     }
 }

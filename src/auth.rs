@@ -24,6 +24,11 @@ pub fn login_user(req: Request) -> anyhow::Result<Response> {
                     created_at: now_iso(),
                 };
                 store.set_json(&format!("token:{}", token), &data)?;
+                
+                // Track token in central list
+                let mut tokens: Vec<String> = store.get_json("tokens_list")?.unwrap_or_default();
+                tokens.push(token.clone());
+                store.set_json("tokens_list", &tokens)?;
 
                 let resp = serde_json::json!({
                     "token": token,
@@ -52,6 +57,11 @@ pub fn logout_user(req: Request) -> anyhow::Result<Response> {
     let token = auth_header.strip_prefix("Bearer ").unwrap();
     let key = format!("token:{}", token);
     store.delete(&key)?;
+    
+    // Remove from central list
+    let mut tokens: Vec<String> = store.get_json("tokens_list")?.unwrap_or_default();
+    tokens.retain(|t| t != token);
+    store.set_json("tokens_list", &tokens)?;
     
     let resp = serde_json::json!({
         "message": "Logged out successfully"
