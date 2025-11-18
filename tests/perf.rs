@@ -196,7 +196,7 @@ async fn perf_test_load_user_with_many_posts() {
             }
         }
 
-        // Try to login again (user might already exist)
+        // Try to login again
         let login_resp = client
             .post(&format!("{}/login", BASE_URL))
             .json(&json!({

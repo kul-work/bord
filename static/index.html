@@ -108,6 +108,9 @@
     </div>
 
     <script>
+        // Must match POSTS_PER_PAGE in src/config.rs
+        const POSTS_PER_PAGE = 10;
+
         let token = localStorage.getItem('token');
         let currentUsername = localStorage.getItem('username');
         let currentUserId = localStorage.getItem('user_id');
@@ -334,7 +337,7 @@
                 }));
                 
                 currentPage = page;
-                hasMorePosts = posts.length === 20;
+                hasMorePosts = posts.length === POSTS_PER_PAGE;
                 renderPosts(postsWithUsers, 'feed', true, true, currentUserId);
                 renderPagination();
             } else {
@@ -384,7 +387,7 @@
                 postsMap = {};
                 posts.forEach(p => postsMap[p.id] = p);
                 currentPage = page;
-                hasMorePosts = posts.length === 20;
+                hasMorePosts = posts.length === POSTS_PER_PAGE;
                 renderPosts(posts, 'profilePosts', false, true, currentUserId);
             } else {
                 document.getElementById('profilePosts').innerHTML = '<p style="color: #999;">Error loading posts</p>';

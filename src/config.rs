@@ -17,5 +17,6 @@ pub const MAX_USERNAME_LENGTH: usize = 50;
 pub const MIN_PASSWORD_LENGTH: usize = 3;
 
 // Pagination limits
-pub const POSTS_PER_PAGE: usize = 20;
+// Must match POSTS_PER_PAGE in static/index.html
+pub const POSTS_PER_PAGE: usize = 10;
 
