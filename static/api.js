@@ -137,6 +137,73 @@ function renderPosts(postsArray, containerId, showUsername = true, showActionsFo
 }
 
 /**
+ * Load paginated posts and render them with pagination controls
+ * Handles both API-fetched and pre-fetched posts (useful when post-processing is needed)
+ * @param {Object} options - Configuration object
+ * @param {string} options.endpoint - API endpoint (e.g., '/posts?all=true') - OPTIONAL if posts provided
+ * @param {Array} options.posts - Pre-fetched posts array - OPTIONAL if endpoint provided
+ * @param {number} options.page - Page number to load (default: 1)
+ * @param {Object} options.apiOptions - Options for apiCall (token, method, etc.)
+ * @param {string} options.containerId - ID of container to render posts into
+ * @param {string} options.paginationContainerId - ID of container for pagination controls
+ * @param {string} options.loadFunctionName - Name of the load function (for pagination buttons)
+ * @param {Object} options.renderOptions - Options for renderPosts function
+ * @param {boolean} options.renderOptions.showUsername - Show username link (default: true)
+ * @param {boolean} options.renderOptions.showActionsForOwnOnly - Show edit/delete only for own posts (default: false)
+ * @param {string} options.renderOptions.currentUserId - Current user ID
+ * @returns {Promise<void>}
+ */
+async function loadPostsPage(options) {
+    const {
+        endpoint = null,
+        posts: preFetchedPosts = null,
+        page = 1,
+        apiOptions = {},
+        containerId,
+        paginationContainerId,
+        loadFunctionName,
+        renderOptions = {}
+    } = options;
+
+    window.scrollTo(0, 0);
+    
+    let posts = preFetchedPosts;
+    let hasMorePosts = false;
+    
+    if (!preFetchedPosts && endpoint) {
+        const res = await apiCall(endpoint, apiOptions);
+        if (!res.ok) {
+            showError('Failed to load posts');
+            return;
+        }
+        posts = res.data;
+    }
+    
+    if (posts) {
+        hasMorePosts = posts.length === POSTS_PER_PAGE;
+        
+        // Update global state if available
+        if (typeof postsMap !== 'undefined') {
+            postsMap = {};
+            posts.forEach(p => postsMap[p.id] = p);
+        }
+        if (typeof currentPage !== 'undefined') {
+            currentPage = page;
+        }
+        if (typeof hasMorePosts !== 'undefined') {
+            window.globalHasMorePosts = hasMorePosts;
+        }
+        
+        // Render posts
+        const { showUsername = true, showActionsForOwnOnly = false, currentUserId = null } = renderOptions;
+        renderPosts(posts, containerId, showUsername, showActionsForOwnOnly, currentUserId);
+        
+        // Render pagination
+        renderPagination(page, hasMorePosts, paginationContainerId, loadFunctionName);
+    }
+}
+
+/**
  * Render pagination controls
  * @param {number} currentPage - Current page number
  * @param {boolean} hasMorePosts - Whether there are more posts to load

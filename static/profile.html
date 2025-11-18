@@ -36,25 +36,16 @@
         let postsMap = {};
         
         async function loadUserPosts(page = 1) {
-            window.scrollTo(0, 0);
-            const url = '/posts?user=' + encodeURIComponent(username) + '&page=' + page;
-            const res = await apiCall(url);
-            
-            if (res.ok) {
-                const posts = res.data;
-                postsMap = {};
-                posts.forEach(p => postsMap[p.id] = p);
-                currentPage = page;
-                hasMorePosts = posts.length === POSTS_PER_PAGE;
-                renderPosts(posts, 'feed', false, false, currentUserId);
-                renderPagination(currentPage, hasMorePosts, 'pagination', 'loadUserPosts');
-            } else {
-                document.getElementById('feed').innerHTML = '<p style="color: #999;">Error loading posts</p>';
-            }
+            await loadPostsPage({
+                endpoint: '/posts?user=' + encodeURIComponent(username) + '&page=' + page,
+                page,
+                containerId: 'feed',
+                paginationContainerId: 'pagination',
+                loadFunctionName: 'loadUserPosts',
+                renderOptions: { showUsername: false, showActionsForOwnOnly: false, currentUserId }
+            });
         }
         
-
-
         async function renderFollowButton() {
             const container = document.getElementById('follow-container');
             

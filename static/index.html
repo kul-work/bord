@@ -328,14 +328,11 @@
         }
 
         async function loadPosts(page = 1) {
-            window.scrollTo(0, 0);
             document.getElementById('feedTitle').textContent = 'World`s Bord';
             const res = await apiCall(`/posts?all=true&page=${page}`, {});
             
             if (res.ok) {
                 const posts = res.data;
-                postsMap = {};
-                posts.forEach(p => postsMap[p.id] = p);
                 
                 // Fetch user details for each post
                 const postsWithUsers = await Promise.all(posts.map(async (p) => {
@@ -346,24 +343,25 @@
                     return { ...p, username: 'Unknown' };
                 }));
                 
-                currentPage = page;
-                hasMorePosts = posts.length === POSTS_PER_PAGE;
-                renderPosts(postsWithUsers, 'feed', true, true, currentUserId);
-                renderPaginationForView();
+                await loadPostsPage({
+                    page,
+                    posts: postsWithUsers,
+                    containerId: 'feed',
+                    paginationContainerId: 'feedPagination',
+                    loadFunctionName: 'loadPosts',
+                    renderOptions: { showUsername: true, showActionsForOwnOnly: true, currentUserId }
+                });
             } else {
                 showError('Failed to load posts');
             }
         }
 
         async function loadFeed(page = 1) {
-            window.scrollTo(0, 0);
             document.getElementById('feedTitle').textContent = 'Bords on watch';
             const res = await apiCall(`/feed?page=${page}`, { token });
             
             if (res.ok) {
                 const posts = res.data;
-                postsMap = {};
-                posts.forEach(p => postsMap[p.id] = p);
                 
                 // Fetch user details for each post
                 const postsWithUsers = await Promise.all(posts.map(async (p) => {
@@ -374,10 +372,14 @@
                     return { ...p, username: 'Unknown' };
                 }));
                 
-                currentPage = page;
-                hasMorePosts = posts.length === POSTS_PER_PAGE;
-                renderPosts(postsWithUsers, 'feed', true, false, currentUserId);
-                renderPaginationForView();
+                await loadPostsPage({
+                    page,
+                    posts: postsWithUsers,
+                    containerId: 'feed',
+                    paginationContainerId: 'feedPagination',
+                    loadFunctionName: 'loadFeed',
+                    renderOptions: { showUsername: true, showActionsForOwnOnly: false, currentUserId }
+                });
             } else {
                 showError('Failed to load feed');
             }
@@ -397,19 +399,15 @@
             }
 
             // Load user's posts
-            const postsRes = await apiCall(`/posts?page=${page}`, { token });
-            
-            if (postsRes.ok) {
-                const posts = postsRes.data;
-                postsMap = {};
-                posts.forEach(p => postsMap[p.id] = p);
-                currentPage = page;
-                hasMorePosts = posts.length === POSTS_PER_PAGE;
-                renderPosts(posts, 'profilePosts', false, true, currentUserId);
-                renderPaginationForView();
-            } else {
-                document.getElementById('profilePosts').innerHTML = '<p style="color: #999;">Error loading posts</p>';
-            }
+            await loadPostsPage({
+                endpoint: `/posts?page=${page}`,
+                page,
+                apiOptions: { token },
+                containerId: 'profilePosts',
+                paginationContainerId: 'profilePagination',
+                loadFunctionName: 'loadProfile',
+                renderOptions: { showUsername: false, showActionsForOwnOnly: true, currentUserId }
+            });
         }
 
         function updateBioCharCount() {

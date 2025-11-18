@@ -7,6 +7,7 @@ use std::sync::OnceLock;
 use crate::models::models::User;
 use crate::models::models::Post;
 use crate::core::helpers::{store, now_iso, validate_uuid};
+use crate::core::query_params::{parse_query_params, get_string, get_bool_flag, get_int};
 use crate::core::errors::ApiError;
 use crate::auth::validate_token;
 use crate::config::*;
@@ -171,32 +172,11 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
     let store = store();
     let uri = req.uri();
     
-    // Check for query parameters
-    let (filter_username, show_all, page) = if let Some(query_start) = uri.find('?') {
-        let query = &uri[query_start+1..];
-        let mut username = None;
-        let mut all = false;
-        let mut page_num = 1;
-        
-        for param in query.split('&') {
-            if param.starts_with("user=") {
-                let encoded_username = &param[5..];
-                let decoded = urlencoding::decode(encoded_username)
-                    .unwrap_or(std::borrow::Cow::Borrowed(encoded_username))
-                    .to_string();
-                username = Some(decoded);
-            } else if param == "all=true" {
-                all = true;
-            } else if param.starts_with("page=") {
-                if let Ok(num) = param[5..].parse::<usize>() {
-                    page_num = num.max(1); // Ensure page is at least 1
-                }
-            }
-        }
-        (username, all, page_num)
-    } else {
-        (None, false, 1)
-    };
+    // Parse query parameters
+    let params = parse_query_params(uri);
+    let filter_username = get_string(&params, "user", None);
+    let show_all = get_bool_flag(&params, "all");
+    let page = get_int(&params, "page", 1);
     
     // If filtering by username or showing all, no auth required
     // Otherwise, require authentication for personal posts
@@ -278,21 +258,8 @@ pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     let uri = req.uri();
     
     // Parse page parameter from query string
-    let page = if let Some(query_start) = uri.find('?') {
-        let query = &uri[query_start+1..];
-        query.split('&')
-            .find_map(|param| {
-                if param.starts_with("page=") {
-                    param[5..].parse::<usize>().ok()
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(1)
-            .max(1)
-    } else {
-        1
-    };
+    let params = parse_query_params(uri);
+    let page = get_int(&params, "page", 1);
     
     // Get user's following list
     let followings: Vec<String> = store.get_json(&format!("followings:{}", user_id))?
