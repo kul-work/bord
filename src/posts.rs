@@ -172,10 +172,11 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
     let uri = req.uri();
     
     // Check for query parameters
-    let (filter_username, show_all) = if let Some(query_start) = uri.find('?') {
+    let (filter_username, show_all, page) = if let Some(query_start) = uri.find('?') {
         let query = &uri[query_start+1..];
         let mut username = None;
         let mut all = false;
+        let mut page_num = 1;
         
         for param in query.split('&') {
             if param.starts_with("user=") {
@@ -186,11 +187,15 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
                 username = Some(decoded);
             } else if param == "all=true" {
                 all = true;
+            } else if param.starts_with("page=") {
+                if let Ok(num) = param[5..].parse::<usize>() {
+                    page_num = num.max(1); // Ensure page is at least 1
+                }
             }
         }
-        (username, all)
+        (username, all, page_num)
     } else {
-        (None, false)
+        (None, false, 1)
     };
     
     // If filtering by username or showing all, no auth required
@@ -205,6 +210,7 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
     };
 
     let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let start_idx = (page - 1) * POSTS_PER_PAGE;
 
     let mut posts = Vec::new();
     
@@ -223,30 +229,36 @@ pub fn list_posts(req: Request) -> anyhow::Result<Response> {
         }
         
         if let Some(uid) = target_user_id {
-            for id in feed.iter().take(POSTS_PER_PAGE) {
+            let mut user_posts = Vec::new();
+            for id in feed.iter() {
                 if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
                     if p.user_id == uid {
-                        posts.push(p);
+                        user_posts.push(p);
                     }
                 }
             }
+            posts = user_posts.into_iter().skip(start_idx).take(POSTS_PER_PAGE).collect();
         }
     } else if show_all {
-        // Get all posts from the global feed, sorted by creation date
+        // Get paginated posts from the global feed, sorted by creation date
+        let mut all_posts = Vec::new();
         for id in feed.iter() {
             if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
-                posts.push(p);
+                all_posts.push(p);
             }
         }
+        posts = all_posts.into_iter().skip(start_idx).take(POSTS_PER_PAGE).collect();
     } else {
-        // Authenticated query: get posts for current user
-        for id in feed.iter().take(POSTS_PER_PAGE) {
+        // Authenticated query: get paginated posts for current user
+        let mut user_posts = Vec::new();
+        for id in feed.iter() {
             if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
                 if p.user_id == user_id {
-                    posts.push(p);
+                    user_posts.push(p);
                 }
             }
         }
+        posts = user_posts.into_iter().skip(start_idx).take(POSTS_PER_PAGE).collect();
     }
 
     Ok(Response::builder()

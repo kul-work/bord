@@ -19,6 +19,6 @@ key_value_stores = ["default"]
 environment = { BORD_TOKEN_EXPIRATION_HOURS = "24" }
 
 [component.bord.build]
-##command = "cargo build --target wasm32-wasip1 --release" #PROD
 command = "cargo build --target wasm32-wasip1 --release --features perf"
+##command = "cargo build --target wasm32-wasip1 --release" #PROD
 watch = ["src/**/*.rs", "Cargo.toml", "static/**/*"]

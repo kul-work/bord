@@ -49,6 +49,7 @@
         <div id="feedSection" class="posts hidden">
             <h2 id="feedTitle" style="margin-bottom: 20px; font-size: 20px;">Bords</h2>
             <div id="feed"></div>
+            <div id="feedPagination" class="pagination" style="margin-top: 20px; text-align: center;"></div>
         </div>
 
         <!-- Followers/Following Section -->
@@ -113,6 +114,8 @@
         let editingPostId = null;
         let postsMap = {};
         let currentView = 'feed';
+        let currentPage = 1;
+        let hasMorePosts = true;
 
         function showError(msg) {
             const err = document.getElementById('error');
@@ -141,6 +144,7 @@
 
         function showFeed() {
             currentView = 'feed';
+            currentPage = 1;
             document.getElementById('feedSection').classList.remove('hidden');
             document.getElementById('profileSection').classList.add('hidden');
             document.getElementById('newPostSection').classList.add('hidden');
@@ -151,6 +155,7 @@
 
         function showProfile() {
             currentView = 'profile';
+            currentPage = 1;
             document.getElementById('feedSection').classList.add('hidden');
             document.getElementById('profileSection').classList.remove('hidden');
             document.getElementById('newPostSection').classList.add('hidden');
@@ -310,9 +315,9 @@
             }
         }
 
-        async function loadPosts() {
+        async function loadPosts(page = 1) {
             document.getElementById('feedTitle').textContent = 'World`s Bord';
-            const res = await apiCall('/posts?all=true', {});
+            const res = await apiCall(`/posts?all=true&page=${page}`, {});
             
             if (res.ok) {
                 const posts = res.data;
@@ -328,7 +333,10 @@
                     return { ...p, username: 'Unknown' };
                 }));
                 
+                currentPage = page;
+                hasMorePosts = posts.length === 20;
                 renderPosts(postsWithUsers, 'feed', true, true, currentUserId);
+                renderPagination();
             } else {
                 showError('Failed to load posts');
             }
@@ -356,7 +364,7 @@
             }
         }
 
-        async function loadProfile() {
+        async function loadProfile(page = 1) {
             const res = await apiCall('/profile', { token });
             
             if (res.ok) {
@@ -369,12 +377,14 @@
             }
 
             // Load user's posts
-            const postsRes = await apiCall('/posts', { token });
+            const postsRes = await apiCall(`/posts?page=${page}`, { token });
             
             if (postsRes.ok) {
                 const posts = postsRes.data;
                 postsMap = {};
                 posts.forEach(p => postsMap[p.id] = p);
+                currentPage = page;
+                hasMorePosts = posts.length === 20;
                 renderPosts(posts, 'profilePosts', false, true, currentUserId);
             } else {
                 document.getElementById('profilePosts').innerHTML = '<p style="color: #999;">Error loading posts</p>';
@@ -521,6 +531,25 @@
             localStorage.removeItem('username');
             localStorage.removeItem('user_id');
             showUIForLoggedOut();
+        }
+
+        function renderPagination() {
+            const paginationDiv = document.getElementById('feedPagination');
+            let html = '';
+            
+            const btnStyle = 'padding: 4px 8px; margin-right: 5px; margin-left: 5px; width: 80px; display: inline-block';
+            
+            if (currentPage > 1) {
+                html += `<button onclick="loadPosts(${currentPage - 1})" style="${btnStyle}">← Prev</button>`;
+            }
+            
+            html += `<span style="margin: 0 10px;">Page ${currentPage}</span>`;
+            
+            if (hasMorePosts) {
+                html += `<button onclick="loadPosts(${currentPage + 1})" style="${btnStyle}">Next →</button>`;
+            }
+            
+            paginationDiv.innerHTML = html;
         }
 
         function stripHtml(html) {
