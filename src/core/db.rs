@@ -13,17 +13,21 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
      let mut has_test = false;
      let mut has_alice = false;
      let mut has_bob = false;
+     let mut test_user_id = String::new();
+     let mut bob_user_id = String::new();
      
      for id in &users {
          if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
              if u.username == "test" {
                  has_test = true;
+                 test_user_id = id.clone();
              }
              if u.username == "alice" {
                  has_alice = true;
              }
              if u.username == "bob" {
                  has_bob = true;
+                 bob_user_id = id.clone();
              }
          }
      }
@@ -47,6 +51,7 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
         
         store.set_json(&format!("user:{}", user_id), &user)?;
         users.push(user_id.clone());
+        test_user_id = user_id.clone();
         
         // Create test post
         let post_id = Uuid::new_v4().to_string();
@@ -114,6 +119,7 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
         
         store.set_json(&format!("user:{}", user_id), &user)?;
         users.push(user_id.clone());
+        bob_user_id = user_id.clone();
         
         // Create post for bob
         let post_id = Uuid::new_v4().to_string();
@@ -127,6 +133,15 @@ pub fn init_test_data(store: &Store) -> anyhow::Result<()> {
         
         store.set_json(&format!("post:{}", post_id), &post)?;
         feed.insert(0, post_id);
+    }
+    
+    // Add "test" following "bob" relationship
+    if !test_user_id.is_empty() && !bob_user_id.is_empty() {
+        let mut followings: Vec<String> = store.get_json(&format!("followings:{}", test_user_id))?.unwrap_or_default();
+        if !followings.contains(&bob_user_id) {
+            followings.push(bob_user_id);
+            store.set_json(&format!("followings:{}", test_user_id), &followings)?;
+        }
     }
     
     store.set_json("users_list", &users)?;
