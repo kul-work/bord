@@ -275,6 +275,24 @@ pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     };
 
     let store = store();
+    let uri = req.uri();
+    
+    // Parse page parameter from query string
+    let page = if let Some(query_start) = uri.find('?') {
+        let query = &uri[query_start+1..];
+        query.split('&')
+            .find_map(|param| {
+                if param.starts_with("page=") {
+                    param[5..].parse::<usize>().ok()
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(1)
+            .max(1)
+    } else {
+        1
+    };
     
     // Get user's following list
     let followings: Vec<String> = store.get_json(&format!("followings:{}", user_id))?
@@ -298,10 +316,18 @@ pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     // Sort by created_at in descending order (newest first)
     posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     
+    // Apply pagination
+    let start_idx = (page - 1) * POSTS_PER_PAGE;
+    let paginated_posts: Vec<Post> = posts
+        .into_iter()
+        .skip(start_idx)
+        .take(POSTS_PER_PAGE)
+        .collect();
+    
     Ok(Response::builder()
         .status(200)
         .header("Content-Type", "application/json")
-        .body(serde_json::to_vec(&posts)?)
+        .body(serde_json::to_vec(&paginated_posts)?)
         .build())
 }
 

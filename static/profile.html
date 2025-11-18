@@ -22,6 +22,7 @@
         
         <div class="posts">
             <div id="feed"></div>
+            <div id="pagination" class="pagination" style="margin-top: 20px; text-align: center;"></div>
         </div>
     </div>
     
@@ -30,18 +31,29 @@
         const userId = "PROFILE_USER_ID";
         let currentUserToken = localStorage.getItem('token');
         let currentUserId = localStorage.getItem('user_id');
+        let currentPage = 1;
+        let hasMorePosts = true;
+        let postsMap = {};
         
-        async function loadUserPosts() {
-            const url = '/posts?user=' + encodeURIComponent(username);
+        async function loadUserPosts(page = 1) {
+            window.scrollTo(0, 0);
+            const url = '/posts?user=' + encodeURIComponent(username) + '&page=' + page;
             const res = await apiCall(url);
             
             if (res.ok) {
                 const posts = res.data;
+                postsMap = {};
+                posts.forEach(p => postsMap[p.id] = p);
+                currentPage = page;
+                hasMorePosts = posts.length === POSTS_PER_PAGE;
                 renderPosts(posts, 'feed', false, false, currentUserId);
+                renderPagination(currentPage, hasMorePosts, 'pagination', 'loadUserPosts');
             } else {
                 document.getElementById('feed').innerHTML = '<p style="color: #999;">Error loading posts</p>';
             }
         }
+        
+
 
         async function renderFollowButton() {
             const container = document.getElementById('follow-container');
@@ -95,7 +107,7 @@
         }
 
         (async function() {
-            loadUserPosts();
+            loadUserPosts(1);
             await renderFollowButton();
         })();
     </script>

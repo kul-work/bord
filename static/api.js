@@ -4,6 +4,9 @@
 
 const API_BASE = window.location.origin;
 
+// Must match POSTS_PER_PAGE in src/config.rs
+const POSTS_PER_PAGE = 10;
+
 /**
  * Make an API request
  * @param {string} endpoint - API endpoint (e.g., '/posts')
@@ -131,4 +134,37 @@ function renderPosts(postsArray, containerId, showUsername = true, showActionsFo
             </div>
         </div>
     `).join('');
+}
+
+/**
+ * Render pagination controls
+ * @param {number} currentPage - Current page number
+ * @param {boolean} hasMorePosts - Whether there are more posts to load
+ * @param {string} paginationContainerId - ID of the pagination container
+ * @param {string} loadFunction - Name of the function to call for pagination (e.g., 'loadPosts', 'loadFeed', 'loadProfile', 'loadUserPosts')
+ */
+function renderPagination(currentPage, hasMorePosts, paginationContainerId, loadFunction) {
+    const paginationDiv = document.getElementById(paginationContainerId);
+    if (!paginationDiv) return;
+    
+    // Don't show pagination if on page 1 and no more posts
+    if (currentPage === 1 && !hasMorePosts) {
+        paginationDiv.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    const btnStyle = 'padding: 4px 8px; margin-right: 5px; margin-left: 5px; width: 80px; display: inline-block';
+    
+    if (currentPage > 1) {
+        html += `<button onclick="${loadFunction}(${currentPage - 1})" style="${btnStyle}">← Prev</button>`;
+    }
+    
+    html += `<span style="margin: 0 10px;">Page ${currentPage}</span>`;
+    
+    if (hasMorePosts) {
+        html += `<button onclick="${loadFunction}(${currentPage + 1})" style="${btnStyle}">Next →</button>`;
+    }
+    
+    paginationDiv.innerHTML = html;
 }
