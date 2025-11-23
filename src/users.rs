@@ -25,19 +25,10 @@ fn build_user_json(user: &User) -> serde_json::Value {
     })
 }
 
-fn get_user_by_id(user_id: &str) -> anyhow::Result<Response> {
+fn get_user_by_id(user_id: &str) -> anyhow::Result<Option<User>> {
      let store = store();
      let user_key = user_key(user_id);
-     
-     if let Some(user) = store.get_json::<User>(&user_key)? {
-         Ok(Response::builder()
-             .status(200)
-             .header("Content-Type", "application/json")
-             .body(serde_json::to_vec(&build_user_json(&user))?)
-             .build())
-     } else {
-        Ok(ApiError::NotFound("User not found".to_string()).into())
-     }
+     store.get_json::<User>(&user_key)
 }
 
 pub fn create_user(req: Request) -> anyhow::Result<Response> {
@@ -98,22 +89,36 @@ pub fn create_user(req: Request) -> anyhow::Result<Response> {
  }
 
 pub fn get_profile(req: Request) -> anyhow::Result<Response> {
-    let user_id = match validate_token(&req) {
-        Some(uid) => uid,
-        None => return Ok(ApiError::Unauthorized.into()),
-    };
+     let user_id = match validate_token(&req) {
+         Some(uid) => uid,
+         None => return Ok(ApiError::Unauthorized.into()),
+     };
 
-    get_user_by_id(&user_id)
+     match get_user_by_id(&user_id)? {
+         Some(user) => Ok(Response::builder()
+             .status(200)
+             .header("Content-Type", "application/json")
+             .body(serde_json::to_vec(&build_user_json(&user))?)
+             .build()),
+         None => Ok(ApiError::NotFound("User not found".to_string()).into()),
+     }
 }
 
 pub fn get_user_details(path: &str) -> anyhow::Result<Response> {
-    let user_id = path.trim_start_matches("/users/");
-    
-    if user_id.is_empty() || !validate_uuid(user_id) {
-        return Ok(ApiError::BadRequest("User ID required".to_string()).into());
-    }
+     let user_id = path.trim_start_matches("/users/");
+     
+     if user_id.is_empty() || !validate_uuid(user_id) {
+         return Ok(ApiError::BadRequest("User ID required".to_string()).into());
+     }
 
-    get_user_by_id(user_id)
+     match get_user_by_id(user_id)? {
+         Some(user) => Ok(Response::builder()
+             .status(200)
+             .header("Content-Type", "application/json")
+             .body(serde_json::to_vec(&build_user_json(&user))?)
+             .build()),
+         None => Ok(ApiError::NotFound("User not found".to_string()).into()),
+     }
 }
 
 pub fn update_profile(req: Request) -> anyhow::Result<Response> {
