@@ -3,6 +3,7 @@ use rust_embed::RustEmbed;
 use crate::models::models::User;
 use crate::core::helpers::store;
 use crate::core::errors::ApiError;
+use crate::config::*;
 
 #[derive(RustEmbed)]
 #[folder = "static"]
@@ -13,11 +14,11 @@ pub fn render_user_profile(_req: &Request, path: &str) -> anyhow::Result<Respons
     let store = store();
     
     // Find user by username
-    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    let users: Vec<String> = store.get_json(USERS_LIST_KEY)?.unwrap_or_default();
     let mut target_user: Option<User> = None;
     
     for id in users {
-        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+        if let Some(u) = store.get_json::<User>(&user_key(&id))? {
             if u.username == username {
                 target_user = Some(u);
                 break;

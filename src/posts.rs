@@ -39,12 +39,12 @@ pub fn create_post(req: Request) -> anyhow::Result<Response> {
     };
 
     // Save post object
-    store.set_json(&format!("post:{}", id), &post)?;
+    store.set_json(&post_key(&id), &post)?;
 
     // Append to global feed (store IDs in a JSON list)
-    let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let mut feed: Vec<String> = store.get_json(FEED_KEY)?.unwrap_or_default();
     feed.insert(0, id.clone()); // prepend newest
-    store.set_json("feed", &feed)?;
+    store.set_json(FEED_KEY, &feed)?;
 
     Ok(Response::builder()
         .status(201)
@@ -67,7 +67,7 @@ pub fn edit_post(req: Request) -> anyhow::Result<Response> {
     }
 
     let store = store();
-    let post_key = format!("post:{}", post_id);
+    let post_key = post_key(post_id);
 
     // Check if post exists and belongs to user
     if let Some(mut post) = store.get_json::<Post>(&post_key)? {
@@ -134,11 +134,11 @@ fn filter_post_content(content: &str) -> String {
 /// Fetch all posts from the global feed
 fn get_all_posts_from_feed() -> anyhow::Result<Vec<Post>> {
     let store = store();
-    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let feed: Vec<String> = store.get_json(FEED_KEY)?.unwrap_or_default();
     let mut posts = Vec::new();
     
     for id in feed.iter() {
-        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+        if let Some(p) = store.get_json::<Post>(&post_key(id))? {
             posts.push(p);
         }
     }
@@ -149,11 +149,11 @@ fn get_all_posts_from_feed() -> anyhow::Result<Vec<Post>> {
 /// Filter posts by a single user_id
 fn filter_posts_by_user(user_id: &str) -> anyhow::Result<Vec<Post>> {
     let store = store();
-    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let feed: Vec<String> = store.get_json(FEED_KEY)?.unwrap_or_default();
     let mut posts = Vec::new();
     
     for id in feed.iter() {
-        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+        if let Some(p) = store.get_json::<Post>(&post_key(id))? {
             if p.user_id == user_id {
                 posts.push(p);
             }
@@ -166,11 +166,11 @@ fn filter_posts_by_user(user_id: &str) -> anyhow::Result<Vec<Post>> {
 /// Filter posts from multiple user_ids (e.g., followings)
 fn filter_posts_by_users(user_ids: &[String]) -> anyhow::Result<Vec<Post>> {
     let store = store();
-    let feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+    let feed: Vec<String> = store.get_json(FEED_KEY)?.unwrap_or_default();
     let mut posts = Vec::new();
     
     for id in feed.iter() {
-        if let Some(p) = store.get_json::<Post>(&format!("post:{}", id))? {
+        if let Some(p) = store.get_json::<Post>(&post_key(id))? {
             if user_ids.contains(&p.user_id) {
                 posts.push(p);
             }
@@ -183,10 +183,10 @@ fn filter_posts_by_users(user_ids: &[String]) -> anyhow::Result<Vec<Post>> {
 /// Look up a user by username
 fn get_user_by_username(username: &str) -> anyhow::Result<Option<String>> {
     let store = store();
-    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    let users: Vec<String> = store.get_json(USERS_LIST_KEY)?.unwrap_or_default();
     
     for id in users {
-        if let Some(u) = store.get_json::<User>(&format!("user:{}", id))? {
+        if let Some(u) = store.get_json::<User>(&user_key(&id))? {
             if u.username == username {
                 return Ok(Some(u.id));
             }
@@ -220,21 +220,21 @@ pub fn delete_post(req: Request) -> anyhow::Result<Response> {
      }
  
      let store = store();
-     let post_key = format!("post:{}", post_id);
- 
+     let post_key = post_key(post_id);
+     
      // Check if post exists and belongs to user
      if let Some(p) = store.get_json::<Post>(&post_key)? {
          if p.user_id != user_id {
              return Ok(ApiError::Forbidden.into());
          }
- 
+     
          // Delete the post
              store.delete(&post_key)?;
          
              // Remove from feed
-             let mut feed: Vec<String> = store.get_json("feed")?.unwrap_or_default();
+             let mut feed: Vec<String> = store.get_json(FEED_KEY)?.unwrap_or_default();
              feed.retain(|id| id != post_id);
-             store.set_json("feed", &feed)?;
+             store.set_json(FEED_KEY, &feed)?;
          
              Ok(Response::builder().status(204).build())
      } else {
@@ -301,7 +301,7 @@ pub fn get_feed(req: Request) -> anyhow::Result<Response> {
     let page = get_int(&params, "page", 1);
     
     // Get user's following list
-    let followings: Vec<String> = store.get_json(&format!("followings:{}", user_id))?
+    let followings: Vec<String> = store.get_json(&followings_key(&user_id))?
         .unwrap_or_default();
     
     // Get posts from users they follow

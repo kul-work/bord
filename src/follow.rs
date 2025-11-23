@@ -4,9 +4,10 @@ use crate::models::models::User;
 use crate::core::helpers::{store, validate_uuid};
 use crate::core::errors::ApiError;
 use crate::auth::validate_token;
+use crate::config::*;
 
 pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
-    let followings_key = format!("followings:{}", follower_id);
+    let followings_key = followings_key(follower_id);
     let mut followings: Vec<String> = store
         .get_json(&followings_key)?
         .unwrap_or_default();
@@ -20,7 +21,7 @@ pub fn follow_user(store: &Store, follower_id: &str, following_id: &str) -> anyh
 }
 
 pub fn unfollow_user(store: &Store, follower_id: &str, following_id: &str) -> anyhow::Result<()> {
-    let followings_key = format!("followings:{}", follower_id);
+    let followings_key = followings_key(follower_id);
     let mut followings: Vec<String> = store
         .get_json(&followings_key)?
         .unwrap_or_default();
@@ -32,7 +33,7 @@ pub fn unfollow_user(store: &Store, follower_id: &str, following_id: &str) -> an
 }
 
 pub fn get_followings(store: &Store, user_id: &str) -> anyhow::Result<Vec<String>> {
-    let followings_key = format!("followings:{}", user_id);
+    let followings_key = followings_key(user_id);
     let followings: Vec<String> = store
         .get_json(&followings_key)?
         .unwrap_or_default();
@@ -41,11 +42,11 @@ pub fn get_followings(store: &Store, user_id: &str) -> anyhow::Result<Vec<String
 }
 
 pub fn get_followers(store: &Store, user_id: &str) -> anyhow::Result<Vec<String>> {
-    let users: Vec<String> = store.get_json("users_list")?.unwrap_or_default();
+    let users: Vec<String> = store.get_json(USERS_LIST_KEY)?.unwrap_or_default();
     let mut followers = Vec::new();
     
     for id in users {
-        let followings_key = format!("followings:{}", id);
+        let followings_key = followings_key(&id);
         if let Ok(Some(followings)) = store.get_json::<Vec<String>>(&followings_key) {
             if followings.contains(&user_id.to_string()) {
                 followers.push(id);
@@ -74,7 +75,7 @@ pub fn handle_follow(req: Request) -> anyhow::Result<Response> {
     }
 
     // Verify target user exists
-    let target_key = format!("user:{}", target_user_id);
+    let target_key = user_key(target_user_id);
     if store.get_json::<User>(&target_key)? .is_none() {
         return Ok(ApiError::NotFound("Target user not found".to_string()).into());
     }
