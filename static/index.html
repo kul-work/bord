@@ -119,16 +119,18 @@
         let hasMorePosts = true;
 
         function showError(msg) {
-            const err = document.getElementById('error');
-            err.textContent = msg;
-            err.classList.add('show');
-            setTimeout(() => err.classList.remove('show'), 3000);
-        }
+             const err = document.getElementById('error');
+             err.textContent = msg;
+             err.classList.add('show');
+             window.scrollTo(0, 0);
+             setTimeout(() => err.classList.remove('show'), 3000);
+         }
 
         function showSuccess(msg) {
             const suc = document.getElementById('success');
             suc.textContent = msg;
             suc.classList.add('show');
+            window.scrollTo(0, 0);
             setTimeout(() => suc.classList.remove('show'), 1000);
         }
 
@@ -417,57 +419,62 @@
         }
 
         async function saveBio() {
-            const bio = document.getElementById('profileBio').value.trim();
-
-            const res = await apiCall('/profile', {
-                method: 'PUT',
-                body: { bio },
-                token
-            });
-
-            if (res.ok) {
-                showSuccess('Bio updated!');
-            } else if (res.status === 400) {
-                showError('Bio too long (max 500 chars)');
-            } else {
-                showError('Error updating bio');
-            }
+             const bio = document.getElementById('profileBio').value.trim();
+        
+             const res = await apiCall('/profile', {
+                 method: 'PUT',
+                 body: { bio },
+                 token
+             });
+        
+             if (res.ok) {
+                 showSuccess('Bio updated!');
+             } else if (res.status === 400) {
+                 showError('Bio too long (max 500 chars)');
+             } else {
+                 showError('Error updating bio');
+             }
         }
 
         async function changePassword() {
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-
-            if (!currentPassword || !newPassword) {
-                showError('Please fill in all password fields');
-                return;
-            }
-
-            if (newPassword.length < 1) {
-                showError('New password required');
-                return;
-            }
-
-            const res = await apiCall('/profile', {
-                method: 'PUT',
-                body: {
-                    old_password: currentPassword,
-                    new_password: newPassword
-                },
-                token
-            });
-
-            if (res.ok) {
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value = '';
-                showSuccess('Password changed!');
-            } else if (res.status === 401) {
-                showError('Current password is incorrect');
-            } else if (res.status === 400) {
-                showError('Invalid password');
-            } else {
-                showError('Error changing password');
-            }
+             const currentPassword = document.getElementById('currentPassword').value;
+             const newPassword = document.getElementById('newPassword').value;
+        
+             if (!currentPassword || !newPassword) {
+                 showError('Please fill in all password fields');
+                 return;
+             }
+        
+             if (newPassword.length < 1) {
+                 showError('New password required');
+                 return;
+             }
+        
+             const res = await apiCall('/profile', {
+                 method: 'PUT',
+                 body: {
+                     old_password: currentPassword,
+                     new_password: newPassword
+                 },
+                 token
+             });
+        
+             if (res.ok) {
+                  // Update token with the new one from response
+                  if (res.data.token) {
+                      token = res.data.token;
+                      localStorage.setItem('token', token);
+                  }
+                  document.getElementById('currentPassword').value = '';
+                  document.getElementById('newPassword').value = '';
+                  showSuccess('Password changed!');
+              } else if (res.status === 401) {
+                 showError('Current password is incorrect');
+             } else if (res.status === 400) {
+                 showError('Invalid password');
+             } else {
+                 showError('Error changing password');
+             }
         }
 
         function showUIForLoggedIn() {

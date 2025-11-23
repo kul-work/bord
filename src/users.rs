@@ -1,8 +1,8 @@
 use spin_sdk::http::{Request, Response};
 use uuid::Uuid;
 use ammonia::Builder;
-use crate::models::models::User;
-use crate::core::helpers::{store, hash_password, verify_password, validate_uuid};
+use crate::models::models::{User, TokenData};
+use crate::core::helpers::{store, hash_password, verify_password, validate_uuid, now_iso};
 use crate::core::errors::ApiError;
 use crate::auth::validate_token;
 use crate::config::*;
@@ -127,6 +127,7 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
  
      if let Some(mut user) = store.get_json::<User>(&user_key)? {
          let value: serde_json::Value = serde_json::from_slice(req.body())?;
+         let mut password_changed = false;
  
          // Update bio if provided
          if let Some(bio) = value["bio"].as_str() {
@@ -152,14 +153,57 @@ pub fn update_profile(req: Request) -> anyhow::Result<Response> {
             }
             
             user.password = hash_password(new_password)?;
+            password_changed = true;
          }
  
          store.set_json(&user_key, &user)?;
  
+         // If password changed, invalidate all tokens for this user and issue a new one
+         let mut response_data = build_user_json(&user);
+         if password_changed {
+             let all_tokens: Vec<String> = store.get_json("tokens_list")?.unwrap_or_default();
+             
+             // Filter out tokens for this user and delete them
+             let filtered_tokens: Vec<String> = all_tokens
+                 .into_iter()
+                 .filter(|token| {
+                     let token_key = format!("token:{}", token);
+                     if let Ok(Some(token_data)) = store.get_json::<TokenData>(&token_key) {
+                         if token_data.user_id == user_id {
+                             // Delete token from store
+                             let _ = store.delete(&token_key);
+                             false // Exclude from filtered list
+                         } else {
+                             true // Keep token from other users
+                         }
+                     } else {
+                         true // Keep if we can't read it
+                     }
+                 })
+                 .collect();
+             store.set_json("tokens_list", &filtered_tokens)?;
+             
+             // Generate new token
+             let new_token = Uuid::new_v4().to_string();
+             let token_data = TokenData {
+                 user_id: user_id.clone(),
+                 created_at: now_iso(),
+             };
+             store.set_json(&format!("token:{}", new_token), &token_data)?;
+             
+             // Add to tokens_list
+             let mut updated_tokens = filtered_tokens;
+             updated_tokens.push(new_token.clone());
+             store.set_json("tokens_list", &updated_tokens)?;
+             
+             // Include new token in response
+             response_data["token"] = serde_json::Value::String(new_token);
+         }
+ 
          Ok(Response::builder()
              .status(200)
              .header("Content-Type", "application/json")
-             .body(serde_json::to_vec(&build_user_json(&user))?)
+             .body(serde_json::to_vec(&response_data)?)
              .build())
      } else {
          Ok(ApiError::NotFound("User not found".to_string()).into())
