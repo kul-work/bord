@@ -30,32 +30,32 @@ impl From<ApiError> for Response {
             ApiError::BadRequest(msg) => Response::builder()
                 .status(400)
                 .header("Content-Type", "application/json")
-                .body(serde_json::json!({"error": msg}).to_string())
+                .body(serde_json::to_vec(&serde_json::json!({"error": msg})).unwrap())
                 .build(),
             ApiError::Unauthorized => Response::builder()
                 .status(401)
                 .header("Content-Type", "application/json")
-                .body(serde_json::json!({"error": "Unauthorized"}).to_string())
+                .body(serde_json::to_vec(&serde_json::json!({"error": "Unauthorized"})).unwrap())
                 .build(),
             ApiError::Forbidden => Response::builder()
                 .status(403)
                 .header("Content-Type", "application/json")
-                .body(serde_json::json!({"error": "Forbidden"}).to_string())
+                .body(serde_json::to_vec(&serde_json::json!({"error": "Forbidden"})).unwrap())
                 .build(),
             ApiError::NotFound(msg) => Response::builder()
                 .status(404)
                 .header("Content-Type", "application/json")
-                .body(serde_json::json!({"error": msg}).to_string())
+                .body(serde_json::to_vec(&serde_json::json!({"error": msg})).unwrap())
                 .build(),
             ApiError::Conflict(msg) => Response::builder()
                 .status(409)
                 .header("Content-Type", "application/json")
-                .body(serde_json::json!({"error": msg}).to_string())
+                .body(serde_json::to_vec(&serde_json::json!({"error": msg})).unwrap())
                 .build(),
             ApiError::InternalError(msg) => Response::builder()
                 .status(500)
                 .header("Content-Type", "application/json")
-                .body(serde_json::json!({"error": msg}).to_string())
+                .body(serde_json::to_vec(&serde_json::json!({"error": msg})).unwrap())
                 .build(),
         }
     }
