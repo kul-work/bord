@@ -1,4 +1,3 @@
-## curl -v http://localhost:8080/hello
 apiVersion: core.spinkube.dev/v1alpha1
 kind: SpinApp
 metadata:
@@ -6,3 +5,7 @@ metadata:
 spec:
   replicas: 1
   image: ghcr.io/spinkube/containerd-shim-spin/examples/spin-rust-hello:v0.13.0
+## RUN TEST
+## $ kubectl get pods
+## $ kubectl port-forward pod/test-spinapp-5dc6d7475b-bqpc9 8080:80
+## $ curl -v http://localhost:8080/hello
