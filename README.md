@@ -77,7 +77,7 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 4. Fix SPIN containerd
 
    ```bash
-   docker cp ./.k3d/config.toml.tmpl k3d-bord-server-0:/var/lib/rancher/k3s/agent/etc/containerd/config.toml
+   docker cp ./.k3d/config.toml.tmpl k3d-bord-server-0:/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
    docker restart k3d-bord-server-0
    ```
 
