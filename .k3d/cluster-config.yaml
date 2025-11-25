@@ -1,0 +1,13 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: bord
+servers: 1
+#agents: 1
+registries:
+  create:
+    name: registry.localhost
+    host: 0.0.0.0
+    hostPort: "5000"
+  insecure:
+    - localhost:5000

@@ -1,0 +1,8 @@
+apiVersion: core.spinkube.dev/v1alpha1
+kind: SpinApp
+metadata:
+  name: bord
+spec:
+  image: "localhost:5000/bord:latest"
+  executor: containerd-shim-spin
+  replicas: 2
