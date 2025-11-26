@@ -101,16 +101,18 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
    kubectl logs -f deployment/bord
    ```
 
+   ![Bord K9s](bord-k9s.jpg)
+
 8. Test app
 
    ```bash
    kubectl apply -f bord-service.yaml
    kubectl port-forward svc/bord-service 80:80
    start http://localhost
+
    ```
 
-
-## Learning Resources
+   ## Learning Resources
 
 - [Spin Framework Documentation](https://developer.fermyon.com/spin)
 - [Rust Book](https://doc.rust-lang.org/book/)
