@@ -3,11 +3,9 @@ kind: Simple
 metadata:
   name: bord
 servers: 1
-#agents: 1
 registries:
+  configFile: .k3d/registries.yaml
   create:
-    name: registry.localhost
+    name: k3d-bord-registry
     host: 0.0.0.0
     hostPort: "5000"
-  insecure:
-    - localhost:5000

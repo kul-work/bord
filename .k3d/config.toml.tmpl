@@ -35,12 +35,8 @@ version = 2
 [plugins."io.containerd.grpc.v1.cri".registry]
   config_path = "/var/lib/rancher/k3s/agent/etc/containerd/certs.d"
 
-[plugins."io.containerd.grpc.v1.cri".registry.configs."localhost:5000"]
+[plugins."io.containerd.grpc.v1.cri".registry.configs."registry:5000"]
   insecure = true
   http = true
-
-[plugins."io.containerd.grpc.v1.cri".registry.configs."registry.localhost:5000"]
-  insecure = true
-  http = true
-
+  
 # EOF fixed file

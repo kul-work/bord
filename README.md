@@ -60,6 +60,7 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 
    ```bash
    k3d cluster delete --all
+   docker network rm k3d-bord
    ```
 
 2. Create cluster
@@ -71,14 +72,13 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 3. Install Spin Operator
 
    ```bash
-   ./install-spin-operator.bat
+   install-spin-operator.bat
    ```
 
-4. Fix SPIN containerd
+4. Adjust SPIN containerd
 
    ```bash
-   docker cp ./.k3d/config.toml.tmpl k3d-bord-server-0:/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
-   docker restart k3d-bord-server-0
+   install-spin-operator-extra.bat
    ```
 
 5. Build and push to local registry

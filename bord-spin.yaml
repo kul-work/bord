@@ -3,6 +3,6 @@ kind: SpinApp
 metadata:
   name: bord
 spec:
-  image: "localhost:5000/bord:latest"
+  image: "k3d-bord-registry:5000/bord:latest"
   executor: containerd-shim-spin
   replicas: 2
