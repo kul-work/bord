@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bord
+  name: bord-docker
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: bord
+      app: bord-docker
   template:
     metadata:
       labels:
-        app: bord
+        app: bord-docker
     spec:
       containers:
-      - name: bord
-        image: bord:latest
+      - name: bord-docker
+        image: bord-docker:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 80
@@ -22,11 +22,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: bord-service
+  name: bord-docker-service
 spec:
   type: LoadBalancer
   selector:
-    app: bord
+    app: bord-docker
   ports:
-  - port: 80
+  - port: 8080
     targetPort: 80
+## Create & import the image to k3d
+## $ docker build -t bord-docker:latest -f Dockerfile.spin .
+## $ k3d image load bord-docker:latest -c bord
