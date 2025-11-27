@@ -75,26 +75,20 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
    install-spin-operator.bat
    ```
 
-4. Adjust SPIN containerd
-
-   ```bash
-   install-spin-operator-extra.bat
-   ```
-
-5. Build and push to local registry
+4. Build and push to local registry
 
    ```bash
    spin build
    spin registry push --insecure localhost:5000/bord:latest
    ```
 
-6. Deploy to k3d
+5. Deploy to k3d
 
    ```bash
    kubectl apply -f bord-spin.yaml
    ```
 
-7. Check status
+6. Check status
 
    ```bash
    kubectl get spinapps
@@ -103,7 +97,7 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 
    ![Bord K9s](bord-k9s.jpg)
 
-8. Test app
+7. Test app
 
    ```bash
    kubectl port-forward svc/bord-service 80:80
