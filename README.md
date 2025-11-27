@@ -106,7 +106,6 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 8. Test app
 
    ```bash
-   kubectl apply -f bord-service.yaml
    kubectl port-forward svc/bord-service 80:80
    start http://localhost
 
