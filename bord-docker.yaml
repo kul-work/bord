@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bord-docker
+  labels:
+    app: bord-docker
 spec:
   replicas: 2
   selector:

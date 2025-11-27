@@ -2,6 +2,8 @@ apiVersion: core.spinkube.dev/v1alpha1
 kind: SpinApp
 metadata:
   name: bord
+  labels:
+    app: bord
 spec:
   image: "k3d-bord-registry:5000/bord:latest"
   executor: containerd-shim-spin
