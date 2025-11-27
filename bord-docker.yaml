@@ -17,7 +17,7 @@ spec:
       containers:
       - name: bord-docker
         image: bord-docker:latest
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
 ---
