@@ -1,0 +1,4 @@
+mirrors:
+  "k3d-bord-registry:5000":
+    endpoint:
+      - "http://k3d-bord-registry:5000"

@@ -1,0 +1,11 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: bord
+servers: 1
+registries:
+  configFile: .k3d/registries.yaml
+  create:
+    name: k3d-bord-registry
+    host: 0.0.0.0
+    hostPort: "5000"

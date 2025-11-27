@@ -1,0 +1,26 @@
+apiVersion: core.spinkube.dev/v1alpha1
+kind: SpinApp
+metadata:
+  name: bord
+  labels:
+    app: bord
+spec:
+  image: "k3d-bord-registry:5000/bord:latest"
+  executor: containerd-shim-spin
+  replicas: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bord-service
+spec:
+  type: LoadBalancer
+  selector:
+    core.spinkube.dev/app-name: bord
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+## Create & push the image to k3d
+## $ spin build
+## $ spin registry push --insecure localhost:5000/bord:latest

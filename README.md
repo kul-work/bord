@@ -54,11 +54,69 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 - `Cargo.toml` - Rust project manifest
 - `spin.toml` - Spin application configuration
 
-## Learning Resources
+## Spin Kube with k3d (on Windows)
+
+1. Purge k3d
+
+   ```bash
+   k3d cluster delete --all
+   docker network rm k3d-bord
+   ```
+
+2. Create cluster
+
+   ```bash
+   k3d cluster create --config ./.k3d/cluster-config.yaml
+   ```
+
+3. Install Spin Operator
+
+   ```bash
+   install-spin-operator.bat
+   ```
+
+4. Adjust SPIN containerd
+
+   ```bash
+   install-spin-operator-extra.bat
+   ```
+
+5. Build and push to local registry
+
+   ```bash
+   spin build
+   spin registry push --insecure localhost:5000/bord:latest
+   ```
+
+6. Deploy to k3d
+
+   ```bash
+   kubectl apply -f bord-spin.yaml
+   ```
+
+7. Check status
+
+   ```bash
+   kubectl get spinapps
+   kubectl logs -f deployment/bord
+   ```
+
+   ![Bord K9s](bord-k9s.jpg)
+
+8. Test app
+
+   ```bash
+   kubectl port-forward svc/bord-service 80:80
+   start http://localhost
+
+   ```
+
+   ## Learning Resources
 
 - [Spin Framework Documentation](https://developer.fermyon.com/spin)
 - [Rust Book](https://doc.rust-lang.org/book/)
 - [Spin Rust SDK](https://docs.rs/spin-sdk/)
+- [Spin Kube](https://www.spinkube.dev/)
 
 ## License
 
