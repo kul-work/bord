@@ -11,7 +11,7 @@ kubectl wait pod -l core.spinkube.dev/app-name=bord --for=condition=Ready --time
 # timestamp final
 $end = Get-Date
 
-Write-Host "Pods App with SPIN startup time: $(( $end - $start ).TotalMilliseconds) ms" -ForegroundColor Green
+Write-Host "Pods App with SPIN OCI WASM startup time: $(( $end - $start ).TotalMilliseconds) ms" -ForegroundColor Green
 
 # delete manifest
 kubectl delete -f bord-spin.yaml
@@ -31,7 +31,7 @@ kubectl wait pod -l app=bord-docker --for=condition=Ready --timeout=30s
 # timestamp final
 $end = Get-Date
 
-Write-Host "Pods App with DOCKER startup time: $(( $end - $start ).TotalMilliseconds) ms" -ForegroundColor Green
+Write-Host "Pods App with DOCKER image startup time: $(( $end - $start ).TotalMilliseconds) ms" -ForegroundColor Green
 
 # delete manifest
 kubectl delete -f bord-docker.yaml
