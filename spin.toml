@@ -6,7 +6,7 @@ spin_manifest_version = 2
 name = "bord"
 version = "0.1.0"
 authors = ["Mihai"]
-description = "Minimal Threads/Twitter clone in Rust + Fermyon KV"
+description = "Minimal Threads/Twitter clone in Rust, KV storage and JS front-end."
 
 [[trigger.http]]
 route = "/..."

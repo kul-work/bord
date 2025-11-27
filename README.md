@@ -4,7 +4,7 @@ A minimal Twitter/Threads clone built with Rust and the Spin framework.
 
 ## About
 
-This is a fun learning project to explore Rust and the [Spin framework](https://www.fermyon.com/spin) by building a simple MVP social media platform. It demonstrates core web development concepts including HTTP routing, data persistence with KV, and content filtering and more.
+This is a fun learning project to explore Rust and the [Spin framework](https://www.fermyon.com/spin) by building a simple MVP social media platform. It demonstrates core web development concepts including HTTP routing, data persistence with KV, content filtering and more.
 
 ## Features
 
