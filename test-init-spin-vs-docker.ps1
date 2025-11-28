@@ -3,7 +3,6 @@ $start = Get-Date
 
 # apply manifest
 kubectl apply -f bord-spin.yaml
-kubectl apply -f bord-service.yaml
 
 # wait until the pods are running & ready
 kubectl wait pod -l core.spinkube.dev/app-name=bord --for=condition=Ready --timeout=30s
@@ -15,7 +14,6 @@ Write-Host "Pods App with SPIN OCI WASM startup time: $(( $end - $start ).TotalM
 
 # delete manifest
 kubectl delete -f bord-spin.yaml
-kubectl delete -f bord-service.yaml
 
 Write-Host "------------"
 
