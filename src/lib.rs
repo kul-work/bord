@@ -3,14 +3,14 @@ use spin_sdk::{
     http_component,
 };
 
-mod core;
-mod models;
-mod config;
-mod templates;
-mod auth;
-mod users;
-mod posts;
-mod follow;
+pub mod core;
+pub mod models;
+pub mod config;
+pub mod templates;
+pub mod auth;
+pub mod users;
+pub mod posts;
+pub mod follow;
 
 use core::db;
 use core::helpers;
