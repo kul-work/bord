@@ -24,5 +24,5 @@ docker exec k3d-bord-server-0 mkdir -p /etc/containerd
 docker exec k3d-bord-server-0 cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /etc/containerd/config.toml
 kubectl label node --all kwasm.sh/kwasm-node=true
 docker restart k3d-bord-server-0
-timeout /t 7
+timeout /t 5
 kubectl delete job -n kwasm k3d-bord-server-0-provision-kwasm

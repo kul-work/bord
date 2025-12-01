@@ -14,7 +14,7 @@ kind: Service
 metadata:
   name: bord-service
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     core.spinkube.dev/app-name: bord
   ports:

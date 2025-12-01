@@ -3,6 +3,10 @@ kind: Simple
 metadata:
   name: bord
 servers: 1
+ports:
+  - port: 8080:8080
+    nodeFilters:
+      - loadbalancer
 registries:
   configFile: .k3d/registries.yaml
   create:
