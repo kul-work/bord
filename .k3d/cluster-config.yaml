@@ -4,7 +4,7 @@ metadata:
   name: bord
 servers: 1
 ports:
-  - port: 8080:8080
+  - port: 8080:80
     nodeFilters:
       - loadbalancer
 registries:
