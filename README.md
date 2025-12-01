@@ -60,7 +60,7 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
 
    ```bash
    k3d cluster delete --all
-   docker network rm k3d-bord
+   docker network rm k3d-bord #just to make sure
    ```
 
 2. Create cluster

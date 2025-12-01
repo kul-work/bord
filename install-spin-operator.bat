@@ -18,7 +18,10 @@ rem Step 4: Create the shim executor
 kubectl apply -f https://github.com/spinframework/spin-operator/releases/download/v0.6.1/spin-operator.shim-executor.yaml
 kubectl apply -f https://github.com/spinframework/spin-operator/releases/download/v0.6.1/spin-operator.runtime-class.yaml
 
-
 rem Step 5: adding SPIN containerd extra flags and restart
 docker cp ./.k3d/config.toml.tmpl k3d-bord-server-0:/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+docker exec k3d-bord-server-0 mkdir -p /etc/containerd
+docker exec k3d-bord-server-0 cp /var/lib/rancher/k3s/agent/etc/containerd/config.toml /etc/containerd/config.toml
+kubectl label node --all kwasm.sh/kwasm-node=true
 docker restart k3d-bord-server-0
+kubectl delete job -n kwasm k3d-bord-server-0-provision-kwasm
