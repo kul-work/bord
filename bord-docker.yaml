@@ -30,7 +30,7 @@ spec:
   selector:
     app: bord-docker
   ports:
-  - port: 8080
+  - port: 8081
     targetPort: 80
 ## Create & import the image to k3d
 ## $ docker build -t bord-docker:latest -f Dockerfile.spin .
