@@ -19,7 +19,7 @@ spec:
     core.spinkube.dev/app-name: bord
   ports:
     - protocol: TCP
-      port: 80
+      port: 8080
       targetPort: 80
 ## Create & push the image to k3d
 ## $ spin build

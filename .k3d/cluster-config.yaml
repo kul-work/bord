@@ -4,13 +4,16 @@ metadata:
   name: bord
 servers: 1
 ports:
-  - port: 8080:80
+  - port: 8000:80
     nodeFilters:
       - loadbalancer
-    ## k3d traefik's port is fixed to port 80 so:
-    ## - retart `svclb-traefik` pod if an app is defined on port 80 inside k8s and LB method is used in app's service
-    ## - otherwise use traefik with an ingress service to reach the app by a localhost:8080/path    
+  - port: 8080:8080
+    nodeFilters:
+      - loadbalancer
   - port: 8081:8081
+    nodeFilters:
+      - loadbalancer
+  - port: 8082:8082
     nodeFilters:
       - loadbalancer
 registries:

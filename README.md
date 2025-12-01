@@ -103,13 +103,6 @@ This is a fun learning project to explore Rust and the [Spin framework](https://
    start http://localhost:8080
    ```
 
-   sau
-
-   ```bash
-   kubectl port-forward svc/bord-service 80:80
-   start http://localhost
-   ```
-
    ## Learning Resources
 
 - [Spin Framework Documentation](https://developer.fermyon.com/spin)
