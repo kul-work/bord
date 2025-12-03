@@ -1,0 +1,22 @@
+spin_manifest_version = 2
+
+[application]
+name = "bord-filter"
+version = "0.1.0"
+authors = ["Mihai"]
+description = "Proxy filter that forwards requests to main Bord app."
+
+[[trigger.http]]
+route = "/..."
+component = "bord-filter"
+
+## use `spin up --listen 127.0.0.1:3001` on main app
+[component.bord-filter]
+source = "../target/wasm32-wasip1/release/bord_filter.wasm"
+allowed_outbound_hosts = ["http://127.0.0.1:3001","http://bord-service:8080","http://bord-service.default.svc.cluster.local:8080"]
+environment = { BORD_TARGET = "http://bord-service.default.svc.cluster.local:8080" }
+
+
+[component.bord-filter.build]
+command = "cargo build --target wasm32-wasip1 --release"
+watch = ["src/**/*.rs", "Cargo.toml"]

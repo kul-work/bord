@@ -1,26 +1,26 @@
 apiVersion: core.spinkube.dev/v1alpha1
 kind: SpinApp
 metadata:
-  name: bord
+  name: bord-filter
   labels:
-    app: bord
+    app: bord-filter
 spec:
-  image: "k3d-bord-registry:5000/bord:latest"
+  image: "k3d-bord-registry:5000/bord-filter:latest"
   executor: containerd-shim-spin
   replicas: 2
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: bord-service
+  name: bord-filter-service
 spec:
-  type: ClusterIP  # was LoadBalancer
+  type: LoadBalancer
   selector:
-    core.spinkube.dev/app-name: bord
+    core.spinkube.dev/app-name: bord-filter
   ports:
     - protocol: TCP
       port: 8080
       targetPort: 80
 ## Create & push the image to k3d
 ## $ spin build
-## $ spin registry push --insecure localhost:5000/bord:latest
+## $ spin registry push --insecure localhost:5000/bord-filter:latest

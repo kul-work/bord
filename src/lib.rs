@@ -27,6 +27,14 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
     
     let path = req.path();
     let method = req.method();
+    
+    // Debug: Log X-Origin header if present
+    for (name, value) in req.headers() {
+        if name == "x-origin" {
+            eprintln!("[DEBUG] Request origin: {:?}", value);
+        }
+        //eprintln!("[DEBUG] Check {:?}", value);
+    }
 
     match (method.to_string().as_str(), path) {
         #[cfg(feature = "perf")]
