@@ -1,7 +1,7 @@
 [package]
 name = "bord-filter"
 authors = ["Mihai"]
-description = "WASM proxy for Bord social content filtering"
+description = "WASM transparent proxy for Bord social content filtering"
 version = "0.1.0"
 rust-version = "1.78"
 edition = "2021"
