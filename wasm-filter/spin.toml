@@ -4,7 +4,7 @@ spin_manifest_version = 2
 name = "bord-filter"
 version = "0.1.0"
 authors = ["Mihai"]
-description = "Proxy filter that forwards requests to main Bord app."
+description = "Transparent proxy filter that forwards requests to main Bord app."
 
 [[trigger.http]]
 route = "/..."
