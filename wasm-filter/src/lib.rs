@@ -7,8 +7,10 @@ use std::sync::OnceLock;
 
 #[derive(Debug, Deserialize)]
 struct Config {
+    #[serde(default)]
+    enable_llm: bool,
     llm: LlmConfig,
-    prompt: PromptConfig,
+    llm_prompt: PromptConfig,
     policy: PolicyConfig,
 }
 
@@ -71,7 +73,7 @@ async fn classify_with_llm(content: &str) -> anyhow::Result<ContentClassificatio
     let config = load_config();
     
     // Sentiment analysis prompt
-    let prompt = format!("{}", config.prompt.sentiment_analysis.replace("{}", content));
+    let prompt = format!("{}", config.llm_prompt.sentiment_analysis.replace("{}", content));
     
     let req_body = LlmRequest {
         model: config.llm.model.clone(),
@@ -182,22 +184,24 @@ async fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
             }
             
             // 2. LLM check: sentiment + hate speech detection
-            match classify_with_llm(&content).await {
-                Ok(classification) => {
-                    let config = load_config();
-                    // Block if hate speech detected or sentiment too negative
-                    if classification.is_hate_speech {
-                        eprintln!("[POLICY] Blocked: hate speech detected");
-                        return Ok(build_error_response("Content contains hate speech"));
+            let config = load_config();
+            if config.enable_llm {
+                match classify_with_llm(&content).await {
+                    Ok(classification) => {
+                        // Block if hate speech detected or sentiment too negative
+                        if classification.is_hate_speech {
+                            eprintln!("[POLICY] Blocked: hate speech detected");
+                            return Ok(build_error_response("Content contains hate speech"));
+                        }
+                        if classification.sentiment_score < config.policy.sentiment_score_threshold {
+                            eprintln!("[POLICY] Flagged: very negative sentiment ({})", classification.sentiment_score);
+                            // Log but allow (you can change this to block if needed)
+                        }
                     }
-                    if classification.sentiment_score < config.policy.sentiment_score_threshold {
-                        eprintln!("[POLICY] Flagged: very negative sentiment ({})", classification.sentiment_score);
-                        // Log but allow (you can change this to block if needed)
+                    Err(e) => {
+                        eprintln!("[POLICY] LLM classification failed: {}, allowing request", e);
+                        // Graceful degradation: allow if LLM is down
                     }
-                }
-                Err(e) => {
-                    eprintln!("[POLICY] LLM classification failed: {}, allowing request", e);
-                    // Graceful degradation: allow if LLM is down
                 }
             }
         }

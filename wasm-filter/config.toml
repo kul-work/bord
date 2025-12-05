@@ -1,10 +1,13 @@
+# Enable/disable LLM classification
+enable_llm = false
+
 [llm]
 address = "http://127.0.0.1:11434"
 #model = "neural-chat"
 model = "mistral"
 temperature = 0.7
 
-[prompt]
+[llm_prompt]
 sentiment_analysis = "Analyze the sentiment and hate speech in this text. Respond with ONLY valid JSON, no other text:\n{\"sentiment_score\": 0.5, \"has_hate_speech\": false, \"reason\": \"brief explanation\"}\n\nText: \"{}\""
 
 [policy]
