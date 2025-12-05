@@ -33,7 +33,6 @@ fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
         if name == "x-origin" {
             eprintln!("[DEBUG] Request origin: {:?}", value);
         }
-        //eprintln!("[DEBUG] Check {:?}", value);
     }
 
     match (method.to_string().as_str(), path) {

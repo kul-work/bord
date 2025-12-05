@@ -306,6 +306,8 @@
                 document.getElementById('postContent').value = '';
                 showSuccess('Post created!');
                 loadPosts();
+            } else if (res.status === 422 && res.data && res.data.message) {
+                showError(res.data.message);
             } else {
                 showError('Error creating post');
             }
@@ -537,6 +539,8 @@
                 cancelEdit();
                 showSuccess('Post updated!');
                 loadPosts();
+            } else if (res.status === 422 && res.data && res.data.message) {
+                showError(res.data.message);
             } else if (res.status === 403) {
                 showError('Cannot edit post');
             } else {
