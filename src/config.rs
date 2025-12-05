@@ -42,3 +42,6 @@ pub fn followings_key(user_id: &str) -> String {
     format!("followings:{}", user_id)
 }
 
+// Test token for integration tests
+pub const TEST_TOKEN: &str = "test-integration-token-abc123";
+

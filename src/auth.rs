@@ -80,6 +80,21 @@ pub fn validate_token(req: &Request) -> Option<String> {
         return None;
     }
     let token = auth_header.strip_prefix("Bearer ").unwrap();
+    
+    // Allow test token with hardcoded test user ID
+    if token == crate::config::TEST_TOKEN {
+        // Get the test user's actual ID from store
+        let users: Vec<String> = store.get_json(crate::config::USERS_LIST_KEY).ok()??;
+        for id in users {
+            if let Some(u) = store.get_json::<User>(&crate::config::user_key(&id)).ok()? {
+                if u.username == "test" {
+                    return Some(id);
+                }
+            }
+        }
+        return None;
+    }
+    
     let key = token_key(token);
     if let Some(data) = store.get_json::<TokenData>(&key).ok()? {
         // Check if token is expired
