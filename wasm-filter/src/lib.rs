@@ -5,10 +5,15 @@ use spin_sdk::{
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
+mod tokenizer;
+mod tract_model;
+
 #[derive(Debug, Deserialize)]
 struct Config {
     #[serde(default)]
     enable_llm: bool,
+    #[serde(default)]
+    enable_tract: bool,
     llm: LlmConfig,
     llm_prompt: PromptConfig,
     policy: PolicyConfig,
@@ -125,6 +130,33 @@ async fn classify_with_llm(content: &str) -> anyhow::Result<ContentClassificatio
     }
 }
 
+/// Call Tract for sentiment classification
+fn classify_with_tract(content: &str) -> anyhow::Result<ContentClassification> {
+    match tract_model::classify_sentiment(content) {
+        Ok(sentiment_score) => {
+            eprintln!("[TRACT] Sentiment score: {}", sentiment_score);
+            
+            // Simple heuristic: score < 0.4 = negative (potential hate speech/toxicity)
+            let is_hate_speech = sentiment_score < 0.3;
+            
+            Ok(ContentClassification {
+                sentiment_score,
+                is_hate_speech,
+                reasoning: "tract_inference".to_string(),
+            })
+        }
+        Err(e) => {
+            eprintln!("[TRACT ERROR] Inference failed: {}", e);
+            // Fallback: allow if model fails
+            Ok(ContentClassification {
+                sentiment_score: 0.5,
+                is_hate_speech: false,
+                reasoning: "tract_error".to_string(),
+            })
+        }
+    }
+}
+
 /// Check if content contains forbidden words
 fn contains_forbidden_content(content: &str) -> Option<String> {
     let forbidden_words = match std::env::var("FORBIDDEN_WORDS") {
@@ -183,7 +215,7 @@ async fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
                 return Ok(build_error_response(&error_msg));
             }
             
-            // 2. LLM check: sentiment + hate speech detection
+            // 2. ML-based sentiment/hate speech detection (configurable: LLM or Tract)
             let config = load_config();
             if config.enable_llm {
                 match classify_with_llm(&content).await {
@@ -201,6 +233,23 @@ async fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
                     Err(e) => {
                         eprintln!("[POLICY] LLM classification failed: {}, allowing request", e);
                         // Graceful degradation: allow if LLM is down
+                    }
+                }
+            } else if config.enable_tract {
+                match classify_with_tract(&content) {
+                    Ok(classification) => {
+                        if classification.is_hate_speech {
+                            eprintln!("[POLICY] Blocked: negative sentiment detected");
+                            return Ok(build_error_response("Content sentiment too negative"));
+                        }
+                        if classification.sentiment_score < config.policy.sentiment_score_threshold {
+                            eprintln!("[POLICY] Flagged: very negative sentiment ({})", classification.sentiment_score);
+                            // Log but allow
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("[POLICY] Tract classification failed: {}, allowing request", e);
+                        // Graceful degradation: allow if model fails
                     }
                 }
             }

@@ -1,5 +1,6 @@
-# Enable/disable LLM classification
+# Enable/disable ML classification
 enable_llm = false
+enable_tract = true
 
 [llm]
 address = "http://127.0.0.1:11434"
