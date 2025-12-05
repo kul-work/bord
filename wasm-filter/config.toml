@@ -1,10 +1,11 @@
 [llm]
 address = "http://127.0.0.1:11434"
-model = "neural-chat"
+#model = "neural-chat"
+model = "mistral"
 temperature = 0.7
 
 [prompt]
-sentiment_analysis = "Analyze the sentiment of this text on a scale 0-1 (0=very negative, 1=very positive). Also indicate if it contains hate speech (yes/no). Text: \"{}\"\n\nRespond with: sentiment_score,has_hate_speech,brief_reason"
+sentiment_analysis = "Analyze the sentiment and hate speech in this text. Respond with ONLY valid JSON, no other text:\n{\"sentiment_score\": 0.5, \"has_hate_speech\": false, \"reason\": \"brief explanation\"}\n\nText: \"{}\""
 
 [policy]
 sentiment_score_threshold = 0.2

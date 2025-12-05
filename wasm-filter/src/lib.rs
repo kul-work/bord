@@ -51,6 +51,13 @@ struct LlmResponse {
     response: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct LlmClassification {
+    sentiment_score: f64,
+    has_hate_speech: bool,
+    reason: String,
+}
+
 #[derive(Debug, Clone)]
 struct ContentClassification {
     sentiment_score: f64, // 0.0 (negative) to 1.0 (positive)
@@ -85,27 +92,21 @@ async fn classify_with_llm(content: &str) -> anyhow::Result<ContentClassificatio
             
             // Parse LLM response
             if let Ok(llm_resp) = serde_json::from_str::<LlmResponse>(&body_str) {
-                let parts: Vec<&str> = llm_resp.response.split(',').collect();
+                eprintln!("[LLM DEBUG] Raw response: {}", llm_resp.response);
                 
-                let sentiment_score = parts.get(0)
-                    .and_then(|s| s.trim().parse::<f64>().ok())
-                    .unwrap_or(0.5);
-                
-                let is_hate_speech = parts.get(1)
-                    .map(|s| s.trim().to_lowercase().contains("yes"))
-                    .unwrap_or(false);
-                
-                let reasoning = parts.get(2)
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "unknown".to_string());
-                
-                eprintln!("[LLM] Content classified: sentiment={}, hate_speech={}", sentiment_score, is_hate_speech);
-                
-                Ok(ContentClassification {
-                    sentiment_score,
-                    is_hate_speech,
-                    reasoning,
-                })
+                // Try to parse JSON from the response
+                if let Ok(classification) = serde_json::from_str::<LlmClassification>(&llm_resp.response) {
+                    //eprintln!("[LLM DEBUG] Parsed JSON: sentiment={}, hate_speech={}", classification.sentiment_score, classification.has_hate_speech);
+                    eprintln!("[LLM] Content classified: sentiment={}, hate_speech={}", classification.sentiment_score, classification.has_hate_speech);
+                    
+                    Ok(ContentClassification {
+                        sentiment_score: classification.sentiment_score,
+                        is_hate_speech: classification.has_hate_speech,
+                        reasoning: classification.reason,
+                    })
+                } else {
+                    Err(anyhow::anyhow!("Failed to parse JSON from LLM response"))
+                }
             } else {
                 Err(anyhow::anyhow!("Failed to parse LLM response"))
             }
