@@ -13,6 +13,7 @@ fn contains_forbidden_content(content: &str) -> Option<String> {
     for word in forbidden_words.split(',') {
         let word = word.trim().to_lowercase();
         if !word.is_empty() && content.to_lowercase().contains(&word) {
+            eprintln!("[SPAM DETECTED] Forbidden word found: {}", word);
             return Some("Spam detected - this content won't be posted.".to_string());
         }
     }
