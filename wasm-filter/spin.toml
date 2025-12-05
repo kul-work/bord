@@ -13,7 +13,7 @@ component = "bord-filter"
 ## use `spin up --listen 127.0.0.1:3001` on main app
 [component.bord-filter]
 source = "../target/wasm32-wasip1/release/bord_filter.wasm"
-allowed_outbound_hosts = ["http://127.0.0.1:3001","http://bord-service:8080","http://bord-service.default.svc.cluster.local:8080"]
+allowed_outbound_hosts = ["http://127.0.0.1:3001","http://bord-service:8080","http://bord-service.default.svc.cluster.local:8080","http://127.0.0.1:11434"]
 #environment = { BORD_TARGET = "http://127.0.0.1:3001", FORBIDDEN_WORDS = "cafelutza" }
 environment = { BORD_TARGET = "http://bord-service.default.svc.cluster.local:8080", FORBIDDEN_WORDS = "myword" }
 

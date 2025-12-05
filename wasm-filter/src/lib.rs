@@ -1,7 +1,126 @@
 use spin_sdk::{
-    http::{Request, Response, IntoResponse},
+    http::{Request, Response, IntoResponse, Method},
     http_component,
 };
+use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+
+#[derive(Debug, Deserialize)]
+struct Config {
+    llm: LlmConfig,
+    prompt: PromptConfig,
+    policy: PolicyConfig,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlmConfig {
+    address: String,
+    model: String,
+    #[allow(dead_code)]
+    temperature: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct PromptConfig {
+    sentiment_analysis: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PolicyConfig {
+    sentiment_score_threshold: f64,
+}
+
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
+fn load_config() -> &'static Config {
+    CONFIG.get_or_init(|| {
+        let config_str = include_str!("../config.toml");
+        toml::from_str(config_str).expect("Failed to parse config.toml")
+    })
+}
+
+#[derive(Debug, Serialize)]
+struct LlmRequest {
+    model: String,
+    prompt: String,
+    stream: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlmResponse {
+    response: String,
+}
+
+#[derive(Debug, Clone)]
+struct ContentClassification {
+    sentiment_score: f64, // 0.0 (negative) to 1.0 (positive)
+    is_hate_speech: bool,
+    #[allow(dead_code)]
+    reasoning: String,
+}
+
+/// Call LLM API for sentiment analysis
+async fn classify_with_llm(content: &str) -> anyhow::Result<ContentClassification> {
+    let config = load_config();
+    
+    // Sentiment analysis prompt
+    let prompt = format!("{}", config.prompt.sentiment_analysis.replace("{}", content));
+    
+    let req_body = LlmRequest {
+        model: config.llm.model.clone(),
+        prompt,
+        stream: false,
+    };
+    
+    let request = Request::builder()
+        .method(Method::Post)
+        .uri(format!("{}/api/generate", config.llm.address))
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_vec(&req_body)?)
+        .build();
+    
+    match spin_sdk::http::send::<Request, Response>(request).await {
+        Ok(response) => {
+            let body_str = String::from_utf8_lossy(&response.body());
+            
+            // Parse LLM response
+            if let Ok(llm_resp) = serde_json::from_str::<LlmResponse>(&body_str) {
+                let parts: Vec<&str> = llm_resp.response.split(',').collect();
+                
+                let sentiment_score = parts.get(0)
+                    .and_then(|s| s.trim().parse::<f64>().ok())
+                    .unwrap_or(0.5);
+                
+                let is_hate_speech = parts.get(1)
+                    .map(|s| s.trim().to_lowercase().contains("yes"))
+                    .unwrap_or(false);
+                
+                let reasoning = parts.get(2)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "unknown".to_string());
+                
+                eprintln!("[LLM] Content classified: sentiment={}, hate_speech={}", sentiment_score, is_hate_speech);
+                
+                Ok(ContentClassification {
+                    sentiment_score,
+                    is_hate_speech,
+                    reasoning,
+                })
+            } else {
+                Err(anyhow::anyhow!("Failed to parse LLM response"))
+            }
+        }
+        Err(e) => {
+            eprintln!("[LLM ERROR] LLM call failed: {}", e);
+            // Fallback: if LLM is down, allow request (graceful degradation)
+            Ok(ContentClassification {
+                sentiment_score: 0.5,
+                is_hate_speech: false,
+                reasoning: "llm_unavailable".to_string(),
+            })
+        }
+    }
+}
 
 /// Check if content contains forbidden words
 fn contains_forbidden_content(content: &str) -> Option<String> {
@@ -56,8 +175,29 @@ async fn handle(req: Request) -> anyhow::Result<impl IntoResponse> {
     if (method_str == "POST" && path.starts_with("/posts")) || 
        (method_str == "PUT" && path.starts_with("/posts/")) {
         if let Some(content) = validate_post_content(&body) {
+            // 1. Fast check: forbidden words
             if let Some(error_msg) = contains_forbidden_content(&content) {
                 return Ok(build_error_response(&error_msg));
+            }
+            
+            // 2. LLM check: sentiment + hate speech detection
+            match classify_with_llm(&content).await {
+                Ok(classification) => {
+                    let config = load_config();
+                    // Block if hate speech detected or sentiment too negative
+                    if classification.is_hate_speech {
+                        eprintln!("[POLICY] Blocked: hate speech detected");
+                        return Ok(build_error_response("Content contains hate speech"));
+                    }
+                    if classification.sentiment_score < config.policy.sentiment_score_threshold {
+                        eprintln!("[POLICY] Flagged: very negative sentiment ({})", classification.sentiment_score);
+                        // Log but allow (you can change this to block if needed)
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[POLICY] LLM classification failed: {}, allowing request", e);
+                    // Graceful degradation: allow if LLM is down
+                }
             }
         }
     }
