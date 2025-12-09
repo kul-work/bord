@@ -100,14 +100,6 @@ POST /posts {content: "..."}
 - **0.4-0.6:** Neutral
 - **0.6-1.0:** Positive → **Allow**
 
-## Performance
-
-**Keyword filtering:** <5ms
-**ML inference:** ~100-150ms (CPU, first run with model loading)
-**Total latency:** ~150-200ms per request
-
-For **4-5 TPS target:** Use keyword-only filtering (disable `enable_tract`), or deploy on hardware with better CPU performance.
-
 ## Architecture
 
 ### Modules
