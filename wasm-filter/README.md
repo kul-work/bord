@@ -5,10 +5,10 @@ A WebAssembly-based content filtering proxy for Bord, a social media platform. P
 ## Features
 
 - **Fast keyword-based filtering** - Forbidden words detection
+- **LLM-powered sentiment analysis** (optional) - Ollama-based analysis for more nuanced detection
 - **ML-powered sentiment analysis** (optional) - Tract ONNX inference for sentiment classification
 - **Zero-latency inference** - Model runs in-process, no external API calls
-- **Graceful degradation** - Falls back to keyword filtering if ML fails
-- **Configurable** - Enable/disable ML classification via `config.toml`
+- **Configurable** - Enable/disable ML and LLM classification via `config.toml`
 
 ## Setup
 
@@ -121,7 +121,6 @@ For **4-5 TPS target:** Use keyword-only filtering (disable `enable_tract`), or 
 
 - `spin-sdk` - WebAssembly HTTP runtime
 - `tract-onnx` - ONNX model inference
-- `ndarray` - Tensor operations
 - `serde` - Configuration parsing
 
 ## Limitations
