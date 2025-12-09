@@ -68,11 +68,29 @@ sentiment_score_threshold = 0.2  # Block if score < 0.2 (very negative)
 
 ## Running
 
+### Filter Proxy
+
 ```bash
 spin up
 ```
 
 The filter proxy runs on `http://localhost:3000` and forwards requests to the main Bord app on `http://localhost:3001`.
+
+### Batch Evaluation CLI
+
+Evaluate the Tract model against a labeled dataset:
+
+```bash
+cargo run --bin eval-batch -- --data samples.csv --thresholds 0.3
+```
+
+Options:
+
+- `--data FILE` - CSV with columns: `id`, `comment_text`, `hate_score` (0 = neutral, >0 = toxic)
+- `--thresholds T1,T2,...` - Sentiment thresholds to test (default: 0.2,0.25,0.3,0.35,0.4)
+- `--output FILE` - Write JSON results to file (optional)
+
+Output includes precision, recall, F1, accuracy, and lists all misclassifications (FP/FN).
 
 ## How It Works
 

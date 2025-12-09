@@ -5,8 +5,9 @@ use spin_sdk::{
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
-mod tokenizer;
-mod tract_model;
+pub mod tokenizer;
+pub mod tract_model;
+pub mod models;
 
 #[derive(Debug, Deserialize)]
 struct Config {
