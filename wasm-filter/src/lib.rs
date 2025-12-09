@@ -136,7 +136,7 @@ fn classify_with_tract(content: &str) -> anyhow::Result<ContentClassification> {
         Ok(sentiment_score) => {
             eprintln!("[TRACT] Sentiment score: {}", sentiment_score);
             
-            // Simple heuristic: score < 0.4 = negative (potential hate speech/toxicity)
+            // Simple heuristic: score < 0.3 = negative (potential hate speech/toxicity)
             let is_hate_speech = sentiment_score < 0.3;
             
             Ok(ContentClassification {

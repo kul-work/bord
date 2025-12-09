@@ -43,9 +43,6 @@ wget -O models/tokenizer_config.json \
 **Model Details:**
 
 - **Name:** Xenova DistilBERT SST-2 (ONNX-optimized)
-- **Size:** ~270 MB (ONNX file)
-- **Accuracy:** 91% on sentiment classification
-- **Speed:** ~100-150ms per inference (CPU, WASM)
 - **Task:** Binary sentiment classification (positive/negative)
 - **Tract compatible:** Yes (no unsupported Attention ops)
 
