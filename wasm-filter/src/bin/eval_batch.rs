@@ -2,7 +2,6 @@ use std::fs::File;
 use std::path::PathBuf;
 use clap::Parser;
 use csv::ReaderBuilder;
-use serde_json::json;
 
 // Import tokenizer and tract_model from parent lib
 mod tokenizer {
@@ -37,53 +36,6 @@ struct Sample {
     label: u32,
 }
 
-#[derive(Debug, Clone)]
-struct Metrics {
-    tp: u32,
-    tn: u32,
-    fp: u32,
-    fn_: u32,
-}
-
-impl Metrics {
-    fn precision(&self) -> f64 {
-        let denom = (self.tp + self.fp) as f64;
-        if denom == 0.0 {
-            0.0
-        } else {
-            self.tp as f64 / denom
-        }
-    }
-
-    fn recall(&self) -> f64 {
-        let denom = (self.tp + self.fn_) as f64;
-        if denom == 0.0 {
-            0.0
-        } else {
-            self.tp as f64 / denom
-        }
-    }
-
-    fn f1(&self) -> f64 {
-        let p = self.precision();
-        let r = self.recall();
-        if p + r == 0.0 {
-            0.0
-        } else {
-            2.0 * (p * r) / (p + r)
-        }
-    }
-
-    fn accuracy(&self) -> f64 {
-        let total = (self.tp + self.tn + self.fp + self.fn_) as f64;
-        if total == 0.0 {
-            0.0
-        } else {
-            (self.tp + self.tn) as f64 / total
-        }
-    }
-}
-
 fn load_samples(path: &PathBuf) -> anyhow::Result<Vec<Sample>> {
     let file = File::open(path)?;
     let mut reader = ReaderBuilder::new()
@@ -113,33 +65,21 @@ fn load_samples(path: &PathBuf) -> anyhow::Result<Vec<Sample>> {
 fn evaluate(
     samples: &[Sample],
     threshold: f64,
-) -> anyhow::Result<(Metrics, Vec<(String, bool, bool, f64)>)> {
-    let mut metrics = Metrics {
-        tp: 0,
-        tn: 0,
-        fp: 0,
-        fn_: 0,
-    };
-
+) -> anyhow::Result<((), Vec<(String, bool, bool, f64)>)> {
     let mut results = Vec::new();
 
+    let mut toxic_count = 0;
+    let mut neutral_count = 0;
+
     for (idx, sample) in samples.iter().enumerate() {
-        // Get ground truth (1 if toxic, 0 if neutral)
-        let ground_truth = sample.label > 0;
+         // Get ground truth (1 if toxic, 0 if neutral)
+         let ground_truth = sample.label > 0;
 
-        // Run inference
-        match tract_model::classify_sentiment(&sample.text) {
-            Ok(sentiment_score) => {
-                // Predict as toxic if score < threshold
-                let predicted = sentiment_score < threshold;
-
-                // Update metrics
-                match (predicted, ground_truth) {
-                    (true, true) => metrics.tp += 1,
-                    (false, false) => metrics.tn += 1,
-                    (true, false) => metrics.fp += 1,
-                    (false, true) => metrics.fn_ += 1,
-                }
+         // Run inference
+         match tract_model::classify_sentiment(&sample.text) {
+             Ok(sentiment_score) => {
+                  // Predict as toxic if score < threshold
+                  let predicted = sentiment_score < threshold;
 
                 results.push((
                     sample.id.clone(),
@@ -148,17 +88,22 @@ fn evaluate(
                     sentiment_score,
                 ));
 
-                if predicted != ground_truth {
-                    let status = if predicted && !ground_truth {
-                        "FP (false positive)"
-                    } else {
-                        "FN (false negative)"
-                    };
-                    eprintln!(
-                        "[{}] {} | {} | score={:.4}",
-                        status, sample.id, sample.text, sentiment_score
-                    );
+                // Red if toxic, green if neutral (based on model prediction only)
+                let color = if predicted { "\x1b[31m" } else { "\x1b[32m" };
+                let reset = "\x1b[0m";
+                let label = if predicted { "TOXIC" } else { "NEUTRAL" };
+                
+                // Count predictions
+                if predicted {
+                    toxic_count += 1;
+                } else {
+                    neutral_count += 1;
                 }
+                
+                eprintln!(
+                    "{}[{}] ID={} | score={:.4}{}",
+                    color, label, sample.id, sentiment_score, reset
+                );
             }
             Err(e) => {
                 eprintln!("⚠ Inference failed for {}: {}", sample.id, e);
@@ -173,7 +118,15 @@ fn evaluate(
     }
 
     eprintln!("\n");
-    Ok((metrics, results))
+    
+    // Print class distribution summary
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    eprintln!("Class Distribution:");
+    eprintln!("  Toxic samples:   {}", toxic_count);
+    eprintln!("  Neutral samples: {}", neutral_count);
+    eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    
+    Ok(((), results))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -200,68 +153,13 @@ fn main() -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("No valid thresholds provided"));
     }
 
-    let mut all_results = Vec::new();
-
     // Evaluate across all thresholds
     for threshold in &thresholds {
         eprintln!(
             "Evaluating threshold {:.2}...",
             threshold
         );
-        let (metrics, _results) = evaluate(&samples, *threshold)?;
-
-        println!("\n═════════════════════════════════════════════════════════");
-        println!("  Tract Sentiment Evaluation - Threshold {:.2}", threshold);
-        println!("═════════════════════════════════════════════════════════");
-        println!();
-        println!("Samples:       {}", samples.len());
-        println!();
-        println!("Results:");
-        println!("  True Positives:   {:>6}  ({:>5.1}% of positives)", metrics.tp, 
-                 (metrics.tp as f64 / (metrics.tp + metrics.fn_) as f64) * 100.0);
-        println!("  False Positives:  {:>6}  ({:>5.1}% of predicted toxic)", metrics.fp,
-                 (metrics.fp as f64 / (metrics.tp + metrics.fp) as f64) * 100.0);
-        println!("  True Negatives:   {:>6}  ({:>5.1}% of negatives)", metrics.tn,
-                 (metrics.tn as f64 / (metrics.tn + metrics.fp) as f64) * 100.0);
-        println!("  False Negatives:  {:>6}  ({:>5.1}% of negatives)", metrics.fn_,
-                 (metrics.fn_ as f64 / (metrics.tn + metrics.fp) as f64) * 100.0);
-        println!();
-        println!("Metrics:");
-        println!("  Precision:  {:.4} ({:.2}%)", metrics.precision(), metrics.precision() * 100.0);
-        println!("  Recall:     {:.4} ({:.2}%)", metrics.recall(), metrics.recall() * 100.0);
-        println!("  F1 Score:   {:.4}", metrics.f1());
-        println!("  Accuracy:   {:.4} ({:.2}%)", metrics.accuracy(), metrics.accuracy() * 100.0);
-        println!();
-
-        // Store for JSON output
-        let result_obj = json!({
-            "threshold": threshold,
-            "samples": samples.len(),
-            "tp": metrics.tp,
-            "tn": metrics.tn,
-            "fp": metrics.fp,
-            "fn": metrics.fn_,
-            "precision": metrics.precision(),
-            "recall": metrics.recall(),
-            "f1": metrics.f1(),
-            "accuracy": metrics.accuracy(),
-        });
-
-        all_results.push(result_obj);
-    }
-
-    println!("═════════════════════════════════════════════════════════\n");
-
-    // Write JSON output
-    if let Some(output_path) = args.output {
-        let json_output = serde_json::to_string_pretty(&all_results)?;
-        std::fs::write(&output_path, json_output)?;
-        eprintln!("✓ Results written to {}", output_path.display());
-    } else {
-        // Output JSON to stdout for jq piping
-        for result in &all_results {
-            println!("{}", result.to_string());
-        }
+        let (_metrics, _results) = evaluate(&samples, *threshold)?;
     }
 
     Ok(())

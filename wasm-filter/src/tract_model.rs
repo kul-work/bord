@@ -60,7 +60,10 @@ pub fn classify_sentiment(text: &str) -> anyhow::Result<f64> {
     }
     
     // Run model
-    eprintln!("[TRACT] Running inference...");
+    #[cfg(feature = "debug")]
+    {
+        eprintln!("[TRACT] Running inference...");
+    }
     let outputs = model.run(tvec![
         input_tensor.into(),
         mask_tensor.into()
