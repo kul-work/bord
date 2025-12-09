@@ -19,10 +19,14 @@ pub fn classify_sentiment(text: &str) -> anyhow::Result<f64> {
     let model_bytes = include_bytes!("../models/model.onnx");
     
     // Parse ONNX from bytes
-    let graph = tract_onnx::onnx()
+    let mut graph = tract_onnx::onnx()
         .model_for_read(&mut std::io::Cursor::new(model_bytes))?;
     
-    let model = graph.into_runnable()?;
+    // Set concrete input facts for shape inference
+    graph.set_input_fact(0, InferenceFact::dt_shape(i64::datum_type(), vec![1, 128]))?;
+    graph.set_input_fact(1, InferenceFact::dt_shape(i64::datum_type(), vec![1, 128]))?;
+    
+    let model = graph.into_optimized()?.into_runnable()?;
     
     // Create tensors using tract macros
     eprintln!("[TRACT] Creating tensors...");
