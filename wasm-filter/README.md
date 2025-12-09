@@ -81,7 +81,7 @@ The filter proxy runs on `http://localhost:3000` and forwards requests to the ma
 Evaluate the Tract model against a labeled dataset:
 
 ```bash
-cargo run --bin eval-batch -- --data samples.csv --thresholds 0.3
+cargo run --bin eval-batch -- --data samples.csv --thresholds 0.2
 ```
 
 Options:
