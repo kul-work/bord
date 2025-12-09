@@ -78,7 +78,7 @@ impl Tokenizer {
         // Truncate if longer than 128
         tokens.truncate(128);
         
-        eprintln!("[TOKENIZER] Tokenized: {} -> {} tokens", text, tokens.len());
+        eprintln!("[TOKENIZER] Sample: {} -> {} tokens", text, tokens.len());
         tokens
     }
     

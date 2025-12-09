@@ -88,6 +88,8 @@ fn load_samples(path: &PathBuf) -> anyhow::Result<Vec<Sample>> {
     let file = File::open(path)?;
     let mut reader = ReaderBuilder::new()
         .has_headers(true)
+        .flexible(true)
+        .delimiter(b'\t')
         .from_reader(file);
 
     let mut samples = Vec::new();

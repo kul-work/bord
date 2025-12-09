@@ -1,5 +1,5 @@
-id,comment_text,hate_score
-test-001,I love this beautiful sunny day,0
-test-002,This is absolutely terrible and I hate it,2
-test-003,All people are worthless and should die,3
-test-004,The weather is okay today,0
+id	comment_text	hate_score
+test-001	I love this beautiful sunny day	0
+test-002	This is absolutely terrible and I hate it	2
+test-003	All people are worthless and should die	3
+test-004	The weather is okay today	0
