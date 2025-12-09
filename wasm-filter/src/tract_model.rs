@@ -14,7 +14,10 @@ pub fn classify_sentiment(text: &str) -> anyhow::Result<f64> {
         .map(|&id| if id == 0 { 0 } else { 1 })
         .collect();
     
-    eprintln!("[TRACT] Loading and running model...");
+    #[cfg(feature = "debug")]
+    {
+        eprintln!("[TRACT] Loading and running model...");
+    }
     
     let model_bytes = include_bytes!("../models/model.onnx");
     
@@ -29,7 +32,10 @@ pub fn classify_sentiment(text: &str) -> anyhow::Result<f64> {
     let model = graph.into_optimized()?.into_runnable()?;
     
     // Create tensors using tract macros
-    eprintln!("[TRACT] Creating tensors...");
+    #[cfg(feature = "debug")]
+    {
+        eprintln!("[TRACT] Creating tensors...");
+    }
     
     // Convert to fixed-size arrays for tensor2 macro (batch_size=1)
     let mut input_array = [0i64; 128];
@@ -38,14 +44,20 @@ pub fn classify_sentiment(text: &str) -> anyhow::Result<f64> {
     input_array[..len].copy_from_slice(&token_ids[..len]);
     mask_array[..len].copy_from_slice(&attention_mask[..len]);
     
+    #[cfg(feature = "debug")]
+    {
     eprintln!("[TRACT] Tensor shape: ({}, {})", 1, 128);
     eprintln!("[TRACT] First few input tokens: {:?}", &input_array[..10]);
+    }
     
     let input_tensor = tensor2(&[input_array]);
     let mask_tensor = tensor2(&[mask_array]);
     
+    #[cfg(feature = "debug")]
+    {
     eprintln!("[TRACT] Input tensor shape: {:?}", input_tensor.shape());
     eprintln!("[TRACT] Mask tensor shape: {:?}", mask_tensor.shape());
+    }
     
     // Run model
     eprintln!("[TRACT] Running inference...");
