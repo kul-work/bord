@@ -7,7 +7,6 @@ A WebAssembly-based content filtering proxy for Bord, a social media platform. P
 - **Fast keyword-based filtering** - Forbidden words detection
 - **LLM-powered sentiment analysis** (optional) - Ollama-based analysis for more nuanced detection
 - **ML-powered sentiment analysis** (optional) - Tract ONNX inference for sentiment classification
-- **Zero-latency inference** - Model runs in-process, no external API calls
 - **Configurable** - Enable/disable ML and LLM classification via `config.toml`
 
 ## Setup
@@ -84,21 +83,24 @@ POST /posts {content: "..."}
     ↓
 1. Forbidden words check (keyword blacklist)
     ↓
-2. ML sentiment analysis (Tract ONNX) [if enabled]
-    ├─ Tokenize input text
-    ├─ Run inference
-    ├─ Extract sentiment score (0.0-1.0)
-    └─ Decision: negative sentiment → block or flag
+2. Sentiment analysis (choose one) [if enabled]
+    ├─ LLM (Ollama) [if enable_llm=true]
+    │  └─ Call Ollama API for classification
+    └─ Tract ONNX [if enable_tract=true]
+       ├─ Tokenize input text
+       ├─ Run model inference
+       └─ Extract sentiment score (0.0-1.0)
     ↓
-3. Forward to main app (if passes filters)
+3. Decision: Block if negative sentiment or hate speech detected
+    ↓
+4. Forward to main app (if passes filters)
 ```
 
-### Sentiment Score Interpretation
+### Sentiment Score Thresholds
 
-- **0.0-0.2:** Very negative (potentially toxic/hateful) → **Block**
-- **0.2-0.4:** Negative (may flag for review)
-- **0.4-0.6:** Neutral
-- **0.6-1.0:** Positive → **Allow**
+- **< 0.2:** Very negative (blocks if Tract/LLM enabled)
+- **0.2+:** Allowed
+- **Note:** Tract internally flags anything < 0.3 as potential hate speech
 
 ## Architecture
 
