@@ -21,32 +21,33 @@ spin up --listen 127.0.0.1:3001
 
 ### 2. Download ML Model (Optional)
 
-If using ML-based sentiment filtering, download the Intel DistilBERT sentiment model:
+If using ML-based sentiment filtering, download the Xenova DistilBERT sentiment model:
 
 ```bash
 # Create models directory
 mkdir -p models
 
-# Download ONNX model (172 MB)
+# Download ONNX model
 wget -O models/model.onnx \
-  https://huggingface.co/Intel/distilbert-base-uncased-finetuned-sst-2-english-int8-dynamic-inc/resolve/main/model.onnx
+  https://huggingface.co/Xenova/distilbert-base-uncased-finetuned-sst-2-english/resolve/main/onnx/model.onnx
 
-# Download vocabulary (232 KB)
+# Download vocabulary
 wget -O models/vocab.txt \
-  https://huggingface.co/Intel/distilbert-base-uncased-finetuned-sst-2-english-int8-dynamic-inc/resolve/main/vocab.txt
+  https://huggingface.co/Xenova/distilbert-base-uncased-finetuned-sst-2-english/resolve/main/vocab.txt
 
 # Download tokenizer config (optional, for reference)
 wget -O models/tokenizer_config.json \
-  https://huggingface.co/Intel/distilbert-base-uncased-finetuned-sst-2-english-int8-dynamic-inc/resolve/main/tokenizer_config.json
+  https://huggingface.co/Xenova/distilbert-base-uncased-finetuned-sst-2-english/resolve/main/tokenizer_config.json
 ```
 
 **Model Details:**
 
-- **Name:** Intel DistilBERT SST-2 (int8 quantized)
-- **Size:** 26 MB (quantized) / 172 MB (ONNX file)
+- **Name:** Xenova DistilBERT SST-2 (ONNX-optimized)
+- **Size:** ~270 MB (ONNX file)
 - **Accuracy:** 91% on sentiment classification
 - **Speed:** ~100-150ms per inference (CPU, WASM)
 - **Task:** Binary sentiment classification (positive/negative)
+- **Tract compatible:** Yes (no unsupported Attention ops)
 
 ### 3. Configure Filtering
 

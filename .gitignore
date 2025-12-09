@@ -3,4 +3,4 @@ target/
 .cargo/
 Cargo.lock
 AGENTS.md
-wasm-filter/models
+wasm-filter/models*
